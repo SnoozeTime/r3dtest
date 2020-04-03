@@ -1,0 +1,47 @@
+[package]
+name = "r3dtest"
+version = "0.1.0"
+authors = ["Benoit Eudier <benoit.eudier@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+luminance = "0.39.0"
+luminance-derive = "0.5"
+luminance-glfw = "0.12"
+luminance-windowing = "0.8"
+image = "0.23.2"
+wavefront_obj = "7"
+cgmath = "0.17"
+
+thiserror = "1.0.13"
+log = "0.4.8"
+pretty_env_logger = "0.4.0"
+dotenv = "0.15.0"
+try-guard = "0.2.0"
+serde = "1.0.105"
+serde_derive = "1.0.105"
+serde_json = "1.0.48"
+
+ron = "0.5.1"
+
+slotmap = "0.4.0"
+hecs = "0.2.9"
+downcast-rs = "1.1.1"
+shrev = "1.1.1"
+# for dev...
+crossbeam-channel = "0.4.0"
+notify = "5.0.0-pre.2"
+
+# net.
+tokio = { version = "0.2.13", features = ["full"] }
+tokio-util = { version = "0.3.1", features = ["full"]}
+bytes = "0.5.4"
+futures = "0.3.4"
+futures-util = "0.3.4"
+
+[dependencies.glam]
+version = "0.8.4"
+features = ["serde"]
+

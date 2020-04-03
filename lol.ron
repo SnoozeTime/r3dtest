@@ -1,0 +1,111 @@
+[
+    (
+        transform: Some((
+            translation: (0, 2, -2),
+            scale: (1, 1, 1),
+            rotation: (0, 0, 0, 1),
+        )),
+        render: Some((
+            mesh: "cube",
+        )),
+        rigid_body: Some((
+            mass: 10,
+            shape: AABB((1, 1, 1)),
+            ty: Static,
+        )),
+        color: Some((
+            r: 212,
+            g: 80,
+            b: 121,
+        )),
+        health: Some((
+            current: 1,
+            max: 1,
+        )),
+    ),
+    (
+        transform: Some((
+            translation: (0, 0, 0),
+            scale: (25, 0.1, 25),
+            rotation: (0, 0, 0, 1),
+        )),
+        render: Some((
+            mesh: "cube",
+        )),
+        rigid_body: Some((
+            mass: 0,
+            shape: AABB((50, 0.05, 50)),
+            ty: Static,
+        )),
+        color: Some((
+            r: 233,
+            g: 225,
+            b: 204,
+        )),
+    ),
+    (
+        transform: Some((
+            translation: (0, 2, 0),
+            scale: (1, 1, 1),
+            rotation: (0, 0, 0, 1),
+        )),
+        render: Some((
+            mesh: "axis",
+        )),
+        color: Some((
+            r: 0,
+            g: 255,
+            b: 0,
+        )),
+    ),
+    (
+        transform: Some((
+            translation: (0, 2, 0),
+            scale: (1, 1, 1),
+            rotation: (0, 0, 0.70710677, 0.70710677),
+        )),
+        render: Some((
+            mesh: "axis",
+        )),
+        color: Some((
+            r: 255,
+            g: 0,
+            b: 0,
+        )),
+    ),
+    (
+        transform: Some((
+            translation: (0, 2, 0),
+            scale: (1, 1, 1),
+            rotation: (0, -0.70710677, 0, 0.70710677),
+        )),
+        render: Some((
+            mesh: "axis",
+        )),
+        color: Some((
+            r: 0,
+            g: 0,
+            b: 255,
+        )),
+    ),
+    (
+            transform: Some((
+                translation: (0, 1, -10),
+                scale: (15, 3, 1),
+                rotation: (0, 0, 0, 1),
+            )),
+            rigid_body: Some((
+                mass: 1,
+                shape: AABB((15, 3, 1)),
+                ty: Static,
+            )),
+            render: Some((
+                mesh: "cube",
+            )),
+            color: Some((
+                r: 234,
+                g: 144,
+                b: 133,
+            )),
+        ),
+]
