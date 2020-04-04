@@ -1,12 +1,42 @@
 use crate::event::GameEvent;
+use crate::net::snapshot::Deltable;
 use crate::resources::Resources;
 use log::info;
 use serde_derive::{Deserialize, Serialize};
 use shrev::{EventChannel, ReaderId};
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
+
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, Default)]
 pub struct Health {
     pub current: f32,
     pub max: f32,
+}
+
+impl Deltable for Health {
+    type Delta = (f32, f32);
+
+    fn compute_delta(&self, old: &Self) -> Option<Self::Delta> {
+        if self.current == old.current && self.max == old.max {
+            None
+        } else {
+            Some((self.current - old.current, self.max - old.max))
+        }
+    }
+
+    fn compute_complete(&self) -> Option<Self::Delta> {
+        Some((self.current, self.max))
+    }
+
+    fn apply_delta(&mut self, delta: &Self::Delta) {
+        self.max += delta.1;
+        self.current += delta.0;
+    }
+
+    fn new_component(delta: &Self::Delta) -> Self {
+        Self {
+            max: delta.1,
+            current: delta.0,
+        }
+    }
 }
 
 pub struct HealthSystem {
@@ -27,9 +57,12 @@ impl HealthSystem {
 
         for ev in chan.read(&mut self.rdr_id) {
             if let GameEvent::EntityShot { entity } = ev {
-                if let Ok(_health) = world.get_mut::<Health>(*entity) {
-                    info!("Entity was shot. Delete it!");
-                    entities_to_delete.push(*entity);
+                if let Ok(mut health) = world.get_mut::<Health>(*entity) {
+                    health.current -= 1.0;
+                    info!("Entity was shot. current health = {:?}", health.current);
+                    if health.current <= 0.0 {
+                        entities_to_delete.push(*entity);
+                    }
                 }
             }
         }

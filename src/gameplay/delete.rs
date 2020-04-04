@@ -3,6 +3,7 @@
 use crate::event::GameEvent;
 use crate::physics::{BodyToEntity, PhysicWorld, RigidBody};
 use crate::resources::Resources;
+use log::info;
 use shrev::{EventChannel, ReaderId};
 
 /// ahahaha what a confusing name.
@@ -39,7 +40,9 @@ impl GarbageCollector {
                 }
 
                 // remove from world
-                world.despawn(*e).unwrap();
+                if let Err(e) = world.despawn(*e) {
+                    info!("Entity was already deleted (or does not exist?)");
+                }
             }
         }
     }

@@ -1,12 +1,14 @@
 use crate::camera::Camera;
 use crate::controller::client::ClientCommand;
-use crate::event::Event;
-use crate::physics::{PhysicWorld, RigidBody};
+use crate::event::{Event, GameEvent};
+use crate::physics::{BodyIndex, BodyToEntity, PhysicWorld, RigidBody};
 use crate::resources::Resources;
 use hecs::Entity;
 #[allow(unused_imports)]
 use log::{debug, info, trace};
 use serde_derive::{Deserialize, Serialize};
+use shrev::EventChannel;
+
 pub mod client;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,17 +44,13 @@ fn apply_cmd(
     cmd: ClientCommand,
     world: &mut hecs::World,
     physics: &mut PhysicWorld,
-    _resources: &Resources,
+    resources: &Resources,
 ) {
     match cmd {
-        ClientCommand::LookAt(front) => {
-            debug!(
-                "Modify camera front for {}. New front is {:?}",
-                e.to_bits(),
-                front
-            );
+        ClientCommand::LookAt(pitch, yaw) => {
             let mut camera = world.get_mut::<Camera>(e).unwrap();
-            camera.front = front;
+            camera.pitch = pitch;
+            camera.yaw = yaw;
             camera.compute_vectors();
         }
         ClientCommand::Move(dir) => {
@@ -66,9 +64,28 @@ fn apply_cmd(
             let mut fps = world.get_mut::<Fps>(e).unwrap();
 
             if fps.on_ground {
+                info!("JUMP");
                 physics.add_velocity_change(rb.handle.unwrap(), 20.0 * glam::Vec3::unit_y());
                 fps.jumping = true;
                 physics.set_friction(rb.handle.unwrap(), 0.0);
+            }
+        }
+        ClientCommand::Shoot => {
+            let camera = world.get::<Camera>(e).unwrap();
+            let rb = world.get::<RigidBody>(e).unwrap();
+            let h = rb.handle.unwrap();
+            println!("CAMERA IS {:?}", *camera);
+            println!(
+                "Will raycast from {:?} direction {:?}",
+                physics.get_pos(h),
+                camera.front
+            );
+
+            let mut d = physics.raycast(h, glam::vec3(0.0, 0.0, 0.0), camera.front);
+            println!("{:?}", d);
+            if let Some(ev) = create_shot_event(d, resources) {
+                let mut event_channel = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
+                event_channel.single_write(ev);
             }
         }
     }
@@ -107,6 +124,7 @@ impl Controller {
                 let mut d = physics.raycast(h, glam::vec3(0.0, 0.0, 0.0), -glam::Vec3::unit_y());
                 d.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
 
+                debug!("Raycast on_ground = {:?}", d);
                 if let Some((minimum_distance, _)) = d.pop() {
                     if minimum_distance < 2.5 {
                         true
@@ -128,6 +146,22 @@ impl Controller {
             }
         }
     }
+}
+
+fn create_shot_event(
+    raycast_result: Vec<(f32, BodyIndex)>,
+    resources: &Resources,
+) -> Option<GameEvent> {
+    raycast_result
+        .iter()
+        .map(|(_, h)| {
+            info!("Body to entity");
+            let body_to_entity = resources.fetch::<BodyToEntity>().unwrap();
+            info!("Get entity");
+            let entity = body_to_entity.get(&h).unwrap();
+            GameEvent::EntityShot { entity: *entity }
+        })
+        .next()
 }
 
 //

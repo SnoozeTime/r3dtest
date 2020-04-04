@@ -4,10 +4,11 @@ use luminance_glfw::{GlfwSurface, Surface, WindowDim, WindowOpt};
 use luminance_windowing::CursorMode;
 use r3dtest::controller::client::ClientCommand;
 use r3dtest::gameplay::delete::GarbageCollector;
+use r3dtest::gameplay::player::spawn_player_ui;
 use r3dtest::net::client::ClientSystem;
 use r3dtest::render::Renderer;
 use r3dtest::{
-    camera::Camera, controller::client, event::GameEvent, input::Input, resources::Resources,
+    camera::Camera, controller::client, ecs, event::GameEvent, input::Input, resources::Resources,
 };
 use serde_derive::{Deserialize, Serialize};
 use shrev::EventChannel;
@@ -106,6 +107,14 @@ fn main_loop(mut surface: GlfwSurface) {
 
     let mut current_time = Instant::now();
     let dt = Duration::from_millis(16);
+
+    fs::write(
+        "online_client_before.ron",
+        ecs::serialization::serialize_world(&world).unwrap(),
+    )
+    .unwrap();
+    spawn_player_ui(&mut world);
+
     'app: loop {
         {
             let mut input = resources.fetch_mut::<Input>().unwrap();
@@ -119,17 +128,6 @@ fn main_loop(mut surface: GlfwSurface) {
 
         // State from the server - will update all positions and so on...
         backend.poll_events(&mut world);
-
-        // update the camera.
-        {
-            let mut c = world.get_mut::<Camera>(camera_entity).unwrap();
-            for cmd in &cmds {
-                if let ClientCommand::LookAt(d) = cmd {
-                    c.front = *d;
-                    c.compute_vectors();
-                }
-            }
-        }
         renderer.update_view_matrix(&world);
 
         // ----------------------------------------------------
@@ -148,4 +146,10 @@ fn main_loop(mut surface: GlfwSurface) {
         }
         current_time = now;
     }
+
+    fs::write(
+        "online_client.ron",
+        ecs::serialization::serialize_world(&world).unwrap(),
+    )
+    .unwrap();
 }

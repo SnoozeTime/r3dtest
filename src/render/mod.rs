@@ -22,7 +22,7 @@ pub mod sprite;
 use crate::camera::Camera;
 use crate::colors::RgbColor;
 use crate::ecs::Transform;
-use crate::gameplay::player::Player;
+use crate::gameplay::player::{MainPlayer, Player};
 use crate::net::snapshot::Deltable;
 use crate::render::shaders::Shaders;
 use crate::render::sprite::SpriteRenderer;
@@ -274,7 +274,7 @@ impl Renderer {
                     for (e, (transform, mesh_name, color)) in
                         world.query::<(&Transform, &Render, &RgbColor)>().iter()
                     {
-                        if let Ok(_) = world.get::<Player>(e) {
+                        if let Ok(_) = world.get::<MainPlayer>(e) {
                             continue; // do not render yourself.
                         }
                         rdr_gate.render(&RenderState::default(), |mut tess_gate| {

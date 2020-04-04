@@ -9,8 +9,11 @@ use serde_derive::{Deserialize, Serialize};
 use luminance_windowing::CursorMode;
 use std::fs::{self};
 
+use r3dtest::controller::{client, Controller};
+use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::health::HealthSystem;
+use r3dtest::gameplay::player::{spawn_player, spawn_player_ui, MainPlayer};
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
 use r3dtest::render::Renderer;
 use r3dtest::{
@@ -68,6 +71,7 @@ fn main_loop(mut surface: GlfwSurface) {
     // SETUP WORLD.
     let world_str = fs::read_to_string("lol.ron").unwrap();
     let mut world = ecs::serialization::deserialize_world(world_str).unwrap();
+
     let mut body_to_entity = BodyToEntity::default();
     // add the rigid bodies to the simulation.
     for (e, (t, mut rb)) in world.query::<(&Transform, &mut RigidBody)>().iter() {
@@ -78,8 +82,13 @@ fn main_loop(mut surface: GlfwSurface) {
     let mut resources = setup_resources();
     resources.insert(body_to_entity);
 
+    let player_entity = spawn_player(&mut world, &mut physics, &resources);
+    world.insert(player_entity, (MainPlayer,)).unwrap();
+    spawn_player_ui(&mut world);
+
     let mut garbage_collector = GarbageCollector::new(&mut resources);
     let mut health_system = HealthSystem::new(&mut resources);
+    let controller = Controller;
 
     'app: loop {
         {
@@ -89,11 +98,22 @@ fn main_loop(mut surface: GlfwSurface) {
                 break 'app;
             }
         }
-
-        // update the camera.
-        {
-            //fps_controller.update(&mut world, &mut physics, &resources);
-        }
+        let cmds = client::process_input(&mut world, &resources)
+            .drain(..)
+            .map(|ev| (player_entity, Event::Client(ev)))
+            .collect();
+        controller.apply_inputs(cmds, &mut world, &mut physics, &resources);
+        controller.update(&mut world, &mut physics, &resources);
+        //        {
+        //            let mut c = world.get_mut::<Camera>(camera_entity).unwrap();
+        //            for cmd in &cmds {
+        //                if let ClientCommand::LookAt(d) = cmd {
+        //                    c.front = *d;
+        //                    c.compute_vectors();
+        //                }
+        //            }
+        //        }
+        renderer.update_view_matrix(&world);
 
         // ----------------------------------------------------
         // PHYSIC SIMULATION
@@ -124,4 +144,10 @@ fn main_loop(mut surface: GlfwSurface) {
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);
     }
+
+    fs::write(
+        "offline.ron",
+        ecs::serialization::serialize_world(&world).unwrap(),
+    )
+    .unwrap();
 }

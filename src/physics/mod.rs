@@ -147,10 +147,17 @@ impl PhysicWorld {
 
                     let next_vel = body.velocity
                         + self.step_dt * glam::vec3(0.0, -self.conf.grav, 0.0)
-                        + body.velocity_change
                         - body.friction * body.velocity;
+                    if body.velocity_change != Vec3::zero() {
+                        info!("Velocity before change = {:?}", next_vel);
+                        info!("CHANGE IS {:?}", body.velocity_change);
+                    }
 
-                    trace!("Next vel = {:?}", next_vel);
+                    let next_vel = next_vel + body.velocity_change;
+                    if body.velocity_change != Vec3::zero() {
+                        info!("Velocity after change = {:?}", next_vel);
+                    }
+                    debug!("Next vel = {:?}", next_vel);
                     body.velocity = next_vel;
                     body.velocity_change = Vec3::zero();
 
@@ -161,7 +168,7 @@ impl PhysicWorld {
                     trace!("Next vel = {:?}", next_vel);
 
                     body.position = next_pos;
-                    debug!("New body = {:?}", body);
+                    trace!("New body = {:?}", body);
                 }
             }
         }
@@ -311,6 +318,7 @@ impl PhysicWorld {
     /// Directly add a velocity change :) instead of using an acceleration
     pub fn add_velocity_change(&mut self, h: BodyIndex, force: glam::Vec3) {
         if let Some(Some(current_state)) = self.current_state.get_mut(h) {
+            info!("Velocity before change = {:?}", current_state.velocity);
             current_state.velocity_change += force;
         }
     }

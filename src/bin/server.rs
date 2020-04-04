@@ -66,6 +66,12 @@ fn main() {
     let mut health_system = HealthSystem::new(&mut resources);
     let controller = Controller;
 
+    fs::write(
+        "online_server.ron",
+        ecs::serialization::serialize_world(&world).unwrap(),
+    )
+    .unwrap();
+
     'app: loop {
         let client_events = backend.poll_events(&mut world, &mut physics, &resources);
         controller.apply_inputs(client_events, &mut world, &mut physics, &resources);

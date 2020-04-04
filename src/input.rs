@@ -8,10 +8,14 @@ pub struct Input {
     pub mouse_delta: Option<(f32, f32)>,
     pub mouse_pos: Option<(f32, f32)>,
     pub should_exit: bool,
+
+    // events are what happened during a frame. We just keep interesting events.
+    pub events: Vec<WindowEvent>,
 }
 
 impl Input {
     pub fn process_events(&mut self, surface: &mut GlfwSurface) {
+        self.events.clear();
         self.mouse_delta = None;
         for event in surface.poll_events() {
             match event {
@@ -37,6 +41,7 @@ impl Input {
                 }
                 WindowEvent::MouseButton(button, Action::Press, _) => {
                     self.mouse_press.insert(button);
+                    self.events.push(event);
                 }
                 WindowEvent::MouseButton(button, Action::Release, _) => {
                     self.mouse_press.remove(&button);
@@ -52,5 +57,15 @@ impl Input {
 
     pub fn is_mouse_down(&self, btn: MouseButton) -> bool {
         self.mouse_press.contains(&btn)
+    }
+
+    pub fn has_mouse_event_happened(&self, btn: MouseButton, action: Action) -> bool {
+        for ev in &self.events {
+            match ev {
+                WindowEvent::MouseButton(btn, action, _) => return true,
+                _ => (),
+            }
+        }
+        false
     }
 }

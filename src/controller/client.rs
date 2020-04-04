@@ -1,23 +1,24 @@
 use super::Fps;
 use crate::camera::Camera;
-use crate::gameplay::player::Player;
+use crate::gameplay::player::{MainPlayer, Player};
 use crate::input::Input;
 use crate::resources::Resources;
-use luminance_glfw::Key;
+use luminance_glfw::{Action, Key, MouseButton, WindowEvent};
 use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum ClientCommand {
     Move(glam::Vec3),
-    LookAt(glam::Vec3),
+    LookAt(f32, f32), // pitch and yaw
     Jump,
+    Shoot,
 }
 
 pub fn process_input(world: &mut hecs::World, resources: &Resources) -> Vec<ClientCommand> {
     let mut commands = vec![];
 
     if let Some((_e, (fps, camera, _))) = world
-        .query::<(&mut Fps, &mut Camera, &Player)>()
+        .query::<(&mut Fps, &mut Camera, &MainPlayer)>()
         .iter()
         .next()
     {
@@ -56,11 +57,15 @@ pub fn process_input(world: &mut hecs::World, resources: &Resources) -> Vec<Clie
         // orientation of camera.
         if let Some((offset_x, offset_y)) = input.mouse_delta {
             apply_delta_dir(offset_x, offset_y, camera, fps.sensitivity);
-            commands.push(ClientCommand::LookAt(camera.front));
+            commands.push(ClientCommand::LookAt(camera.pitch, camera.yaw));
         }
 
         if input.has_key_down(Key::Space) {
             commands.push(ClientCommand::Jump);
+        }
+
+        if input.has_mouse_event_happened(MouseButton::Button1, Action::Press) {
+            commands.push(ClientCommand::Shoot);
         }
     }
     commands

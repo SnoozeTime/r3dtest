@@ -12,17 +12,18 @@ use crate::collections::ring_buffer::RingBuffer;
 use crate::colors::RgbColor;
 use crate::controller::Fps;
 use crate::ecs::{Transform, TransformDelta};
-use crate::gameplay::player::Player;
+use crate::gameplay::health::Health;
+use crate::gameplay::player::{MainPlayer, Player};
 use crate::render::Render;
-use hecs::{Entity, EntityBuilder};
+use hecs::{Entity, EntityBuilder, World};
 #[allow(unused_imports)]
-use log::{debug, error, info};
+use log::{debug, error, info, trace};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
-pub trait Deltable {
-    type Delta;
+pub trait Deltable: Debug {
+    type Delta: Debug;
 
     /// Create the component delta between two instances
     fn compute_delta(&self, old: &Self) -> Option<Self::Delta>;
@@ -49,7 +50,183 @@ pub enum SnapshotError {
     InvalidStateIndex,
 }
 
-pub type State = HashMap<Entity, (Option<Transform>, Option<Render>, Option<RgbColor>)>;
+macro_rules! snapshot {
+    ($(($name:ident, $component:ty)),+) => {
+
+        pub type State = HashMap<
+            Entity,
+//            (
+//            $(
+//                Option<$component>,
+//            )+
+//            ),
+            EntityState
+        >;
+
+        #[derive(Debug, Default)]
+        pub struct EntityState {
+            $(
+                pub $name: Option<$component>,
+            )+
+        }
+
+
+        fn state_from_current(world: &hecs::World) -> State {
+
+            let mut state = HashMap::new();
+
+            for (e, _) in world.iter() {
+
+                let mut entity_state = EntityState::default();
+                $(
+                    if let Ok(c) = world.get::<$component>(e) {
+                        entity_state.$name = Some((*c).clone());
+                    }
+                )+
+                state.insert(e, entity_state);
+            }
+
+//
+//            for (e, $($name,)+) in world
+//                .query::<(
+//                    $(
+//                    Option<&$component>,
+//                    )+
+//                )>()
+//                .iter()
+//            {
+//                state.insert(
+//                    e,
+//                    EntityState {
+//
+//                        $(
+//                        $name: $name.map(|c| c.clone()),
+//                        )+
+//                    }
+//
+//                );
+//            }
+            state
+        }
+
+
+
+        // That is the change for an entity.
+        #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+        pub struct DeltaEntity {
+            pub entity: u64,
+            $(
+                pub $name: Option<<$component as Deltable>::Delta>,
+            )+
+        }
+
+        impl DeltaEntity {
+            fn is_empty(&self) -> bool {
+
+                $(
+                if self.$name.is_some() {
+                    return false;
+                }
+                )+
+
+                true
+
+            }
+        }
+
+
+        impl Applier {
+            pub fn apply_latest(&mut self, world: &mut hecs::World, snapshot: DeltaSnapshot) {
+            debug!("LATEST = {:?}", snapshot);
+
+                // remove deleted entities.
+                for to_delete in snapshot.entities_to_delete {
+                    if let Some(e) = self.server_to_local_entity.get(&to_delete) {
+                        debug!("Will delete {}", e.to_bits());
+                        if let Err(e) = world.despawn(*e) {
+                            error!("Error while despawning entity = {:?}", e);
+                        }
+                    }
+                }
+
+                for deltas in snapshot.deltas {
+                    trace!("delta in snapshot = {:?}", deltas);
+                    if let Some(e) = self.server_to_local_entity.get(&deltas.entity) {
+                        let mut builder = EntityBuilder::new();
+                        $(
+                            apply_delta::<$component>(world, *e, deltas.$name, &mut builder);
+                        )+
+
+                        world
+                            .insert(*e, builder.build())
+                            .expect("Entity does not exist...");
+                    } else {
+                        // TODO Add new entity.
+                        let mut builder = EntityBuilder::new();
+
+                        $(
+                            apply_delta_to_new::<$component>(deltas.$name, &mut builder);
+                        )+
+
+                        // SPECIAL CASE IF PLAYER.
+                        if snapshot.player_entity == deltas.entity {
+
+                            let cam = Camera::new(0., 0.);
+                            builder.add(cam);
+                            let fps = Fps {
+                                on_ground: false,
+                                jumping: false,
+                                sensitivity: 0.005,
+                                speed: 1.5,
+                            };
+                            builder.add(fps);
+                            builder.add(MainPlayer);
+                        }
+
+                        trace!("WILL BUILD NEW ENTITY");
+
+                        let entity = world.spawn(builder.build());
+                        trace!("Local entity is {:?}, server entity is {:?}", entity.to_bits(), deltas.entity);
+                        self.server_to_local_entity.insert(deltas.entity, entity);
+                    }
+                }
+            }
+        }
+
+
+        fn compute_delta_entity(entity: Entity, current: &State, old: &State) -> DeltaEntity {
+            let mut dentity = DeltaEntity::default();
+            dentity.entity = entity.to_bits();
+
+            match (current.get(&entity), old.get(&entity)) {
+                (Some(new_components), Some(old_components)) => {
+                    $(
+                        dentity.$name = compute_delta_for_component(&new_components.$name, &old_components.$name);
+                    )+
+                }
+                (Some(new_components), None) => {
+                    $(
+                        dentity.$name = compute_complete_for_component(&new_components.$name);
+                    )+
+                }
+                _ => ()
+            };
+            dentity
+        }
+
+
+    }
+
+
+}
+
+snapshot! {
+    (delta_transform, Transform),
+    (delta_render, Render),
+    (delta_color, RgbColor),
+    (delta_player, Player),
+    (delta_health, Health)
+}
 
 /// Apply the latest server state to the client state.
 #[derive(Default)]
@@ -58,82 +235,37 @@ pub struct Applier {
     server_to_local_entity: HashMap<u64, Entity>,
 }
 
-impl Applier {
-    pub fn apply_latest(&mut self, world: &mut hecs::World, snapshot: DeltaSnapshot) {
-        // remove deleted entities.
-        for to_delete in snapshot.entities_to_delete {
-            if let Some(e) = self.server_to_local_entity.get(&to_delete) {
-                info!("Will delete {}", e.to_bits());
-                if let Err(e) = world.despawn(*e) {
-                    error!("Error while despawning entity = {:?}", e);
-                }
-            }
+use std::fmt::Debug;
+
+fn apply_delta<T>(
+    world: &mut World,
+    entity: Entity,
+    delta: Option<T::Delta>,
+    builder: &mut EntityBuilder,
+) where
+    T: Debug + Deltable + Send + Sync + 'static,
+{
+    if let Some(d) = delta {
+        if let Ok(mut t) = world.get_mut::<T>(entity) {
+            trace!("Apply delta {:?} to entity {:?}", d, entity);
+            t.apply_delta(&d);
+        } else {
+            trace!("Add new component to entity {:?}", d);
+            // if no component or if entity does not exist.
+            builder.add(T::new_component(&d));
         }
+    }
+}
 
-        for deltas in snapshot.deltas {
-            if let Some(e) = self.server_to_local_entity.get(&deltas.entity) {
-                let mut builder = EntityBuilder::new();
-                if let Some(delta) = deltas.delta_transform {
-                    if let Ok(mut t) = world.get_mut::<Transform>(*e) {
-                        t.apply_delta(&delta);
-                    } else {
-                        builder.add(Transform::new_component(&delta));
-                    }
-                }
+fn apply_delta_to_new<T>(delta: Option<T::Delta>, builder: &mut EntityBuilder)
+where
+    T: Debug + Deltable + Send + Sync + 'static,
+{
+    if let Some(d) = delta {
+        // if no component or if entity does not exist.
+        trace!("Add new component to entity {:?}", d);
 
-                if let Some(delta) = deltas.delta_color {
-                    if let Ok(mut t) = world.get_mut::<RgbColor>(*e) {
-                        t.apply_delta(&delta);
-                    } else {
-                        builder.add(RgbColor::new_component(&delta));
-                    }
-                }
-
-                if let Some(delta) = deltas.delta_render {
-                    if let Ok(mut t) = world.get_mut::<Render>(*e) {
-                        t.apply_delta(&delta);
-                    } else {
-                        builder.add(Render::new_component(&delta));
-                    }
-                }
-
-                world
-                    .insert(*e, builder.build())
-                    .expect("Entity does not exist...");
-            } else {
-                // TODO Add new entity.
-                let mut builder = EntityBuilder::new();
-
-                if let Some(delta) = deltas.delta_transform {
-                    builder.add(Transform::new_component(&delta));
-                }
-
-                if let Some(delta) = deltas.delta_color {
-                    builder.add(RgbColor::new_component(&delta));
-                }
-
-                if let Some(delta) = deltas.delta_render {
-                    builder.add(Render::new_component(&delta));
-                }
-
-                // SPECIAL CASE IF PLAYER.
-                if snapshot.player_entity == deltas.entity {
-                    let cam = Camera::new(0., 0.);
-                    builder.add(cam);
-                    let fps = Fps {
-                        on_ground: false,
-                        jumping: false,
-                        sensitivity: 0.005,
-                        speed: 1.5,
-                    };
-                    builder.add(fps);
-                    builder.add(Player);
-                }
-
-                let entity = world.spawn(builder.build());
-                self.server_to_local_entity.insert(deltas.entity, entity);
-            }
-        }
+        builder.add(T::new_component(&d));
     }
 }
 
@@ -166,13 +298,28 @@ impl Snapshotter {
     /// Update ring buffer with current state.
     pub fn set_current(&mut self, ecs: &hecs::World) {
         // it's making a copy.
-        let mut state = HashMap::new();
-        for (e, (t, r, c)) in ecs
-            .query::<(Option<&Transform>, Option<&Render>, Option<&RgbColor>)>()
-            .iter()
-        {
-            state.insert(e, (t.map(|t| *t), r.map(|r| r.clone()), c.map(|c| *c)));
-        }
+        let state = state_from_current(ecs);
+        //        for (e, (t, r, c, p, h)) in ecs
+        //            .query::<(
+        //                Option<&Transform>,
+        //                Option<&Render>,
+        //                Option<&RgbColor>,
+        //                Option<&Player>,
+        //                Option<&Health>,
+        //            )>()
+        //            .iter()
+        //        {
+        //            state.insert(
+        //                e,
+        //                (
+        //                    t.map(|t| *t),
+        //                    r.map(|r| r.clone()),
+        //                    c.map(|c| *c),
+        //                    p.map(|p| *p),
+        //                    h.map(|h| *h),
+        //                ),
+        //            );
+        //        }
 
         self.state_buf.push(state);
     }
@@ -237,28 +384,6 @@ pub struct DeltaSnapshot {
     pub entities_to_delete: Vec<u64>,
 }
 
-// That is the change for an entity.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeltaEntity {
-    pub entity: u64,
-    pub delta_transform: Option<TransformDelta>,
-    pub delta_render: Option<String>,
-    pub delta_color: Option<RgbColor>,
-}
-
-impl DeltaEntity {
-    fn is_empty(&self) -> bool {
-        match (
-            self.delta_render.as_ref(),
-            self.delta_color,
-            self.delta_transform.as_ref(),
-        ) {
-            (None, None, None) => true,
-            _ => false,
-        }
-    }
-}
-
 // Compute change between two ECS
 //
 // What kind of action:
@@ -298,96 +423,61 @@ pub fn compute_delta(
     }
 }
 
-fn compute_delta_entity(entity: Entity, current: &State, old: &State) -> DeltaEntity {
-    let (delta_transform, delta_render, delta_color) =
-        match (current.get(&entity), old.get(&entity)) {
-            (Some(new_components), Some(old_components)) => (
-                new_components.0.and_then(|t| {
-                    t.compute_delta(&old_components.0.unwrap_or(Transform::default()))
-                }),
-                new_components.1.as_ref().and_then(|t| {
-                    t.compute_delta(
-                        &old_components
-                            .1
-                            .as_ref()
-                            .map(|r| r.clone())
-                            .unwrap_or(Render::default()),
-                    )
-                }),
-                new_components.2.and_then(|t| {
-                    t.compute_delta(&old_components.2.unwrap_or(RgbColor::default()))
-                }),
-            ),
-            (Some(new_components), None) => (
-                new_components.0.and_then(|t| t.compute_complete()),
-                new_components.1.as_ref().and_then(|t| t.compute_complete()),
-                new_components.2.and_then(|t| t.compute_complete()),
-            ),
-            _ => (None, None, None),
-        };
-
-    DeltaEntity {
-        entity: entity.to_bits(),
-        delta_render,
-        delta_color,
-        delta_transform,
-    }
+fn compute_delta_for_component<T>(new: &Option<T>, old: &Option<T>) -> Option<T::Delta>
+where
+    T: Deltable + Default,
+{
+    new.as_ref()
+        .and_then(|c| c.compute_delta(old.as_ref().unwrap_or(&T::default())))
 }
-// TODO To apply client-side, need to maintain a map from entity to entity. Entity server side
-// and entity client side might not match.
 
-//pub fn apply_delta(ecs: &mut hecs::World, delta_snapshot: DeltaSnapshot) {
-//    // First delete the entities that have to be deleted.
-//    for entity in &delta_snapshot.entities_to_delete {
-//        ecs.despawn(*entity);
-//    }
+fn compute_complete_for_component<T>(new: &Option<T>) -> Option<T::Delta>
+where
+    T: Deltable,
+{
+    new.as_ref().and_then(|c| c.compute_complete())
+}
 //
-//    // Then apply the deltas.
-//    for delta in &delta_snapshot.deltas {
-//        // hum I wonder. Allocator should be only relevant on server side so let's just
-//        // override here and see if any bug :D
-//        if !ecs.is_entity_alive(&delta.entity) {
-//            ecs.overwrite(&delta.entity);
+//fn compute_delta_entity(entity: Entity, current: &State, old: &State) -> DeltaEntity {
+//    let (delta_transform, delta_render, delta_color, delta_player, delta_health) =
+//        match (current.get(&entity), old.get(&entity)) {
+//            (Some(new_components), Some(old_components)) => (
+//                new_components.0.and_then(|t| {
+//                    t.compute_delta(&old_components.0.unwrap_or(Transform::default()))
+//                }),
+//                new_components.1.as_ref().and_then(|t| {
+//                    t.compute_delta(
+//                        &old_components
+//                            .1
+//                            .as_ref()
+//                            .map(|r| r.clone())
+//                            .unwrap_or(Render::default()),
+//                    )
+//                }),
+//                new_components.2.and_then(|t| {
+//                    t.compute_delta(&old_components.2.unwrap_or(RgbColor::default()))
+//                }),
+//                new_components
+//                    .3
+//                    .and_then(|p| p.compute_delta(&old_components.3.unwrap_or(Player::default()))),
+//                compute_delta_for_component(&new_components.4, &old_components.4),
+//            ),
+//            (Some(new_components), None) => (
+//                new_components.0.and_then(|t| t.compute_complete()),
+//                new_components.1.as_ref().and_then(|t| t.compute_complete()),
+//                new_components.2.and_then(|t| t.compute_complete()),
+//                new_components.3.and_then(|p| p.compute_complete()),
+//                compute_complete_for_component(&new_components.4),
+//            ),
+//            _ => (None, None, None, None, None),
+//        };
 //
-//            // Maybe need to create some components.
-//            match &delta.delta_transform {
-//                (None, None, None) => (),
-//                _ => {
-//                    ecs.components
-//                        .transforms
-//                        .set(&delta.entity, TransformComponent::default());
-//                }
-//            }
-//
-//            match &delta.delta_model {
-//                (None, None) => (),
-//                _ => {
-//                    ecs.components
-//                        .models
-//                        .set(&delta.entity, ModelComponent::default());
-//                }
-//            }
-//
-//            match &delta.delta_light {
-//                (None, None, None) => (),
-//                _ => {
-//                    ecs.components
-//                        .lights
-//                        .set(&delta.entity, LightComponent::default());
-//                }
-//            }
-//        }
-//
-//        if let Some(transform) = ecs.components.transforms.get_mut(&delta.entity) {
-//            apply_transform_delta(transform, &delta.delta_transform);
-//        }
-//
-//        if let Some(model) = ecs.components.models.get_mut(&delta.entity) {
-//            apply_model_delta(model, &delta.delta_model);
-//        }
-//
-//        if let Some(light) = ecs.components.lights.get_mut(&delta.entity) {
-//            apply_light_delta(light, &delta.delta_light);
-//        }
+//    DeltaEntity {
+//        entity: entity.to_bits(),
+//        delta_render,
+//        delta_color,
+//        delta_transform,
+//        delta_player,
+//        delta_health,
 //    }
 //}

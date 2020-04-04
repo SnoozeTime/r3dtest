@@ -23,7 +23,7 @@ impl Default for Transform {
     fn default() -> Self {
         Self {
             translation: Vec3::zero(),
-            scale: Vec3::one(),
+            scale: Vec3::zero(),
             rotation: Quat::identity(),
         }
     }

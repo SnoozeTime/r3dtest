@@ -5,6 +5,7 @@ use crate::colors::RgbColor;
 use crate::controller::Fps;
 use crate::gameplay::health::Health;
 use crate::physics::RigidBody;
+use crate::render::sprite::{ScreenPosition, SpriteRender};
 use crate::render::Render;
 use hecs::World;
 use serde_derive::{Deserialize, Serialize};
@@ -119,5 +120,7 @@ serialize! {
     (color, RgbColor),
     (camera, Camera),
     (fps, Fps),
-    (health, Health)
+    (health, Health),
+    (sprite, SpriteRender),
+    (screen_position, ScreenPosition)
 }
