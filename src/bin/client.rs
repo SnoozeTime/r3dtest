@@ -93,13 +93,19 @@ fn setup_resources() -> Resources {
     resources
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct ClientConfig {
+    host: String,
+}
+
 fn main_loop(mut surface: GlfwSurface) {
     // 1. Create the surface and renderer.
     let mut renderer = Renderer::new(&mut surface);
 
     // 2. CONNECT TO THE SERVER!
-    let (mut world, camera_entity, mut backend) =
-        connection_loop("127.0.0.1:13466".parse().unwrap());
+    let conf_str = fs::read_to_string("client.ron").unwrap();
+    let conf: ClientConfig = ron::de::from_str(&conf_str).unwrap();
+    let (mut world, camera_entity, mut backend) = connection_loop(conf.host.parse().unwrap());
 
     let mut resources = setup_resources();
 

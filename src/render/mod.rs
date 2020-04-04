@@ -18,6 +18,7 @@ use serde_derive::{Deserialize, Serialize};
 
 pub mod shaders;
 pub mod sprite;
+pub mod text;
 
 use crate::camera::Camera;
 use crate::colors::RgbColor;

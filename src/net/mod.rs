@@ -68,7 +68,10 @@ async fn forward_messages(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     while let Some(i) = to_clients.recv().await {
         debug!("Received message from main loop = {:?}", i);
-        socket.send(i.pack().unwrap()).await?;
+        let (b, addr) = i.pack().unwrap();
+        if let Err(e) = socket.send((b, addr)).await {
+            error!("Error when sending message to server = {:?}", e);
+        }
     }
     Ok(())
 }

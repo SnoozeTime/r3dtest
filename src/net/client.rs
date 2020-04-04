@@ -32,7 +32,7 @@ pub struct ClientSystem {
 
 impl ClientSystem {
     pub fn new(server_addr: SocketAddr) -> Self {
-        let my_adress = "127.0.0.1:0".parse().unwrap();
+        let my_adress = "0.0.0.0:0".parse().unwrap();
         let rt = tokio::runtime::Runtime::new().unwrap();
 
         let mut shared_deque = SharedDeque::new(100);
