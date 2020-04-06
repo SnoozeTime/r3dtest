@@ -14,6 +14,7 @@ use luminance_derive::{Semantics, UniformInterface, Vertex};
 use luminance_glfw::{GlfwSurface, Surface};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
 
 /// Component to display a sprite on the screen.
@@ -27,6 +28,32 @@ pub struct SpriteRender {
     pub sprite_nb: usize,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Metadata {
+    pub height: f32,
+    pub width: f32,
+    pub sprites: Vec<SpriteMetadata>,
+}
+
+impl Metadata {
+    pub fn dim_as_array(&self) -> [f32; 2] {
+        [self.width, self.height]
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SpriteMetadata {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl SpriteMetadata {
+    pub fn as_array(&self) -> [f32; 4] {
+        [self.x, self.y, self.w, self.h]
+    }
+}
 //impl Deltable for SpriteRender {
 //    type Delta = SpriteRender;
 //
@@ -86,11 +113,14 @@ pub struct ShaderInterface {
     #[uniform(unbound)]
     pub model: Uniform<M44>,
 
+    pub spritesheet_dimensions: Uniform<[f32; 2]>,
+    pub sprite_coord: Uniform<[f32; 4]>,
+
     pub tex: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
 }
 
 pub struct SpriteRenderer {
-    textures: HashMap<String, Texture<Dim2, NormRGBA8UI>>,
+    textures: HashMap<String, (Texture<Dim2, NormRGBA8UI>, Metadata)>,
     w: f32,
     h: f32,
     tess: Tess,
@@ -99,13 +129,23 @@ pub struct SpriteRenderer {
 
 impl SpriteRenderer {
     pub fn new(surface: &mut GlfwSurface) -> Self {
-        let image = read_image(std::env::var("ASSET_PATH").unwrap() + "crosshair.png").unwrap();
-        let tex = load_from_disk(surface, image);
-        let shotgun_image =
-            read_image(std::env::var("ASSET_PATH").unwrap() + "shotgun.png").unwrap();
-        let shotgun_tex = load_from_disk(surface, shotgun_image);
+        //        let image = read_image(std::env::var("ASSET_PATH").unwrap() + "crosshair.png").unwrap();
+        //        let tex = load_from_disk(surface, image);
+        //        let shotgun_image =
+        //            read_image(std::env::var("ASSET_PATH").unwrap() + "shotgun.png").unwrap();
+        //        let shotgun_tex = load_from_disk(surface, shotgun_image);
         let mut textures = HashMap::new();
-        textures.insert("crosshair".to_string(), tex);
+
+        let crosshair = load_texture(
+            surface,
+            std::env::var("ASSET_PATH").unwrap() + "sprites/crosshair.png",
+        );
+        let shotgun_tex = load_texture(
+            surface,
+            std::env::var("ASSET_PATH").unwrap() + "sprites/shotgun.png",
+        );
+
+        textures.insert("crosshair".to_string(), crosshair);
         textures.insert("shotgun".to_string(), shotgun_tex);
 
         let render_state = RenderState::default().set_blending((
@@ -142,9 +182,20 @@ impl SpriteRenderer {
             iface.projection.update(projection.to_cols_array_2d());
 
             for (_, (pos, sprite)) in world.query::<(&ScreenPosition, &SpriteRender)>().iter() {
-                let texture =
-                    pipeline.bind_texture(self.textures.get(&sprite.texture).as_ref().unwrap());
+                let assets = self.textures.get(&sprite.texture).unwrap();
+                let texture = pipeline.bind_texture(&assets.0);
+                let metadata = &assets.1;
+
+                let sprite_idx = if sprite.sprite_nb >= metadata.sprites.len() {
+                    0
+                } else {
+                    sprite.sprite_nb
+                };
                 iface.tex.update(&texture);
+                iface
+                    .sprite_coord
+                    .update(assets.1.sprites.get(sprite_idx).unwrap().as_array());
+                iface.spritesheet_dimensions.update(assets.1.dim_as_array());
                 let model = glam::Mat4::from_scale_rotation_translation(
                     glam::vec3(self.w * pos.w, self.h * pos.h, 1.0),
                     glam::Quat::identity(),
@@ -163,6 +214,26 @@ impl SpriteRenderer {
 // read the texture into memory as a whole bloc (i.e. no streaming)
 fn read_image<P: AsRef<Path>>(path: P) -> Option<image::RgbaImage> {
     image::open(path).map(|img| img.flipv().to_rgba()).ok()
+}
+
+fn load_texture<P: AsRef<Path>>(
+    surface: &mut GlfwSurface,
+    path: P,
+) -> (Texture<Dim2, NormRGBA8UI>, Metadata) {
+    let mut metadata_path = path.as_ref().to_path_buf();
+
+    // first the texture.
+
+    let image = read_image(path).unwrap();
+    let tex = load_from_disk(surface, image);
+
+    // then the metadata.
+    metadata_path.set_extension("ron");
+    println!("Metadata path = {:?}", metadata_path);
+    let metadata: Metadata =
+        ron::de::from_str(&fs::read_to_string(metadata_path).unwrap()).unwrap();
+
+    (tex, metadata)
 }
 
 fn load_from_disk(surface: &mut GlfwSurface, img: image::RgbaImage) -> Texture<Dim2, NormRGBA8UI> {

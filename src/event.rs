@@ -9,6 +9,9 @@ pub enum Event {
 
 #[derive(Debug)]
 pub enum GameEvent {
+    /// sound and animation
+    Shoot,
+
     EntityShot {
         entity: Entity,
     },

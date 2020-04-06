@@ -1,5 +1,6 @@
 #![allow(unused)]
 use super::Transform;
+use crate::animation::AnimationController;
 use crate::camera::Camera;
 use crate::colors::RgbColor;
 use crate::controller::Fps;
@@ -122,5 +123,6 @@ serialize! {
     (fps, Fps),
     (health, Health),
     (sprite, SpriteRender),
-    (screen_position, ScreenPosition)
+    (screen_position, ScreenPosition),
+    (animation, AnimationController)
 }

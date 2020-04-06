@@ -1,6 +1,6 @@
 use luminance_glfw::{GlfwSurface, Key, Surface, WindowDim, WindowOpt};
 use std::process::exit;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
 use log::{debug, error, info};
@@ -9,12 +9,13 @@ use serde_derive::{Deserialize, Serialize};
 use luminance_windowing::CursorMode;
 use std::fs::{self};
 
+use r3dtest::animation::AnimationSystem;
 use r3dtest::colors::RgbColor;
 use r3dtest::controller::{client, Controller};
 use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::health::HealthSystem;
-use r3dtest::gameplay::player::{spawn_player, spawn_player_ui, MainPlayer};
+use r3dtest::gameplay::player::{spawn_player, spawn_player_ui, MainPlayer, PlayerSystem};
 use r3dtest::gameplay::ui::UiSystem;
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
 use r3dtest::render::sprite::ScreenPosition;
@@ -24,6 +25,7 @@ use r3dtest::{
     ecs, ecs::Transform, event::GameEvent, input::Input, physics::RigidBody, resources::Resources,
 };
 use shrev::EventChannel;
+use std::thread;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WindowConfig {
@@ -92,13 +94,18 @@ fn main_loop(mut surface: GlfwSurface) {
 
     let player_entity = spawn_player(&mut world, &mut physics, &resources);
     world.insert(player_entity, (MainPlayer,)).unwrap();
-    spawn_player_ui(&mut world);
 
     let mut garbage_collector = GarbageCollector::new(&mut resources);
     let mut health_system = HealthSystem::new(&mut resources);
     let controller = Controller;
     let mut renderer = Renderer::new(&mut surface, &mut resources);
     let mut ui_system = UiSystem::new(&mut world, &mut resources);
+    let mut player_system = PlayerSystem::new(&mut resources);
+    let mut animation_system = AnimationSystem;
+
+    let dt = Duration::from_millis(16);
+
+    let mut current_time = Instant::now();
 
     'app: loop {
         {
@@ -109,21 +116,12 @@ fn main_loop(mut surface: GlfwSurface) {
             }
         }
 
-        let cmds = client::process_input(&mut world, &resources)
+        let cmds = client::process_input(&mut world, &mut resources)
             .drain(..)
             .map(|ev| (player_entity, Event::Client(ev)))
             .collect();
         controller.apply_inputs(cmds, &mut world, &mut physics, &resources);
         controller.update(&mut world, &mut physics, &resources);
-        //        {
-        //            let mut c = world.get_mut::<Camera>(camera_entity).unwrap();
-        //            for cmd in &cmds {
-        //                if let ClientCommand::LookAt(d) = cmd {
-        //                    c.front = *d;
-        //                    c.compute_vectors();
-        //                }
-        //            }
-        //        }
         renderer.update_view_matrix(&world);
 
         // ----------------------------------------------------
@@ -147,6 +145,8 @@ fn main_loop(mut surface: GlfwSurface) {
         // Update health if somebody has been SHOT.
         health_system.update(&world, &resources);
         ui_system.update(&mut world, &mut resources);
+        player_system.update(dt, &mut world, &resources);
+        animation_system.animate(&mut world);
 
         // ----------------------------------------------------
         // RENDERING
@@ -157,11 +157,13 @@ fn main_loop(mut surface: GlfwSurface) {
         garbage_collector.collect(&mut world, &mut physics, &resources);
 
         renderer.check_updates(&mut surface, &world, &resources);
-    }
 
-    fs::write(
-        "offline.ron",
-        ecs::serialization::serialize_world(&world).unwrap(),
-    )
-    .unwrap();
+        // FIXME
+        let now = Instant::now();
+        let frame_duration = now - current_time;
+        if frame_duration < dt {
+            thread::sleep(dt - frame_duration);
+        }
+        current_time = now;
+    }
 }

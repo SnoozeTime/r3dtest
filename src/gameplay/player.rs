@@ -131,7 +131,7 @@ pub fn spawn_player(
         mesh,
         color,
         Player {
-            state: PlayerState::Respawn(5.0),
+            state: PlayerState::Respawn(2.0),
             nb: 0,
         },
         player_health,

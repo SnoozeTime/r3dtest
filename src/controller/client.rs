@@ -1,10 +1,12 @@
 use super::Fps;
 use crate::camera::Camera;
+use crate::event::GameEvent;
 use crate::gameplay::player::{MainPlayer, Player, PlayerState};
 use crate::input::Input;
 use crate::resources::Resources;
 use luminance_glfw::{Action, Key, MouseButton, WindowEvent};
 use serde_derive::{Deserialize, Serialize};
+use shrev::EventChannel;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum ClientCommand {
@@ -14,7 +16,7 @@ pub enum ClientCommand {
     Shoot,
 }
 
-pub fn process_input(world: &mut hecs::World, resources: &Resources) -> Vec<ClientCommand> {
+pub fn process_input(world: &mut hecs::World, resources: &mut Resources) -> Vec<ClientCommand> {
     let mut commands = vec![];
 
     if let Some((_e, (fps, camera, _, p))) = world
@@ -66,6 +68,8 @@ pub fn process_input(world: &mut hecs::World, resources: &Resources) -> Vec<Clie
             }
 
             if input.has_mouse_event_happened(MouseButton::Button1, Action::Press) {
+                let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
+                chan.single_write(GameEvent::Shoot);
                 commands.push(ClientCommand::Shoot);
             }
         }

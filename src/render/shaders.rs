@@ -57,7 +57,7 @@ impl Shaders {
         );
 
         let sprite_program = load_program(
-            get_program_path("shaders/sprite_vs.glsl"),
+            get_program_path("shaders/sprite_2_vs.glsl"),
             get_program_path("shaders/sprite_fs.glsl"),
         );
         let text_program = load_program(

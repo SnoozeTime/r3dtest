@@ -136,7 +136,7 @@ fn main_loop(mut surface: GlfwSurface) {
                 break 'app;
             }
         }
-        let cmds = client::process_input(&mut world, &resources);
+        let cmds = client::process_input(&mut world, &mut resources);
         backend.send_commands(&cmds);
 
         // State from the server - will update all positions and so on...
