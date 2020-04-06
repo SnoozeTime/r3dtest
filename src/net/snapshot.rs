@@ -12,13 +12,16 @@ use crate::collections::ring_buffer::RingBuffer;
 use crate::colors::RgbColor;
 use crate::controller::Fps;
 use crate::ecs::{Transform, TransformDelta};
+use crate::event::GameEvent;
 use crate::gameplay::health::Health;
 use crate::gameplay::player::{MainPlayer, Player};
 use crate::render::Render;
+use crate::resources::Resources;
 use hecs::{Entity, EntityBuilder, World};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
 use serde_derive::{Deserialize, Serialize};
+use shrev::EventChannel;
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -136,9 +139,9 @@ macro_rules! snapshot {
 
 
         impl Applier {
-            pub fn apply_latest(&mut self, world: &mut hecs::World, snapshot: DeltaSnapshot) {
+            pub fn apply_latest(&mut self, world: &mut hecs::World, snapshot: DeltaSnapshot, resources: &mut Resources) {
             debug!("LATEST = {:?}", snapshot);
-
+                let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
                 // remove deleted entities.
                 for to_delete in snapshot.entities_to_delete {
                     if let Some(e) = self.server_to_local_entity.get(&to_delete) {
@@ -157,9 +160,20 @@ macro_rules! snapshot {
                             apply_delta::<$component>(world, *e, deltas.$name, &mut builder);
                         )+
 
+
+
                         world
                             .insert(*e, builder.build())
                             .expect("Entity does not exist...");
+
+                        // mmmmh
+                        if deltas.delta_health.is_some() {
+                            println!("DELTA HEALTH");
+                            chan.single_write(GameEvent::HealthUpdate {
+                                entity: *e,
+                                new_health: world.get::<Health>(*e).unwrap().current,
+                            })
+                        }
                     } else {
                         // TODO Add new entity.
                         let mut builder = EntityBuilder::new();
@@ -188,6 +202,14 @@ macro_rules! snapshot {
                         let entity = world.spawn(builder.build());
                         trace!("Local entity is {:?}, server entity is {:?}", entity.to_bits(), deltas.entity);
                         self.server_to_local_entity.insert(deltas.entity, entity);
+
+                        if deltas.delta_health.is_some() {
+                            println!("DELTA HEALTH - NEW ENTITY");
+                            chan.single_write(GameEvent::HealthUpdate {
+                                entity: entity,
+                                new_health: world.get::<Health>(entity).unwrap().current,
+                            })
+                        }
                     }
                 }
             }

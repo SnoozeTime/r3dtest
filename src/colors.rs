@@ -34,6 +34,15 @@ impl RgbColor {
             self.b as f32 / 255.0,
         ]
     }
+
+    pub fn to_rgba_normalized(self) -> [f32; 4] {
+        [
+            self.r as f32 / 255.0,
+            self.g as f32 / 255.0,
+            self.b as f32 / 255.0,
+            1.0,
+        ]
+    }
 }
 
 impl Deltable for RgbColor {

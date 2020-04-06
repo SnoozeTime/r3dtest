@@ -7,12 +7,12 @@ vec4(0.0, 0.0, 0.0, 1.0)
 );
 
 uniform mat4 transform;
+in vec4 color;
 
 in vec3 left_top;
 in vec2 right_bottom;
 in vec2 tex_left_top;
 in vec2 tex_right_bottom;
-in vec4 color;
 
 out vec2 f_tex_pos;
 out vec4 f_color;

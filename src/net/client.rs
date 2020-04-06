@@ -2,6 +2,7 @@ use crate::collections::shared_deque::SharedDeque;
 use crate::controller::client::ClientCommand;
 use crate::net::protocol::{NetMessage, NetMessageContent, Packet};
 use crate::net::snapshot::Applier;
+use crate::resources::Resources;
 #[allow(unused_imports)]
 use log::{debug, error, info};
 use std::net::SocketAddr;
@@ -140,7 +141,7 @@ impl ClientSystem {
     }
 
     /// Will get the latest events that were sent from the server
-    pub fn poll_events(&mut self, ecs: &mut hecs::World) {
+    pub fn poll_events(&mut self, ecs: &mut hecs::World, resources: &mut Resources) {
         let events = self.from_server.drain();
 
         for ev in events {
@@ -156,7 +157,7 @@ impl ClientSystem {
                     if self.last_known_state == snapshot.old_state {
                         debug!("Client received delta: {:?}", snapshot);
                         self.last_known_state = Some(snapshot.new_state);
-                        self.applier.apply_latest(ecs, snapshot.delta);
+                        self.applier.apply_latest(ecs, snapshot.delta, resources);
                     }
                 }
             }

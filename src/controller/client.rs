@@ -1,6 +1,6 @@
 use super::Fps;
 use crate::camera::Camera;
-use crate::gameplay::player::{MainPlayer, Player};
+use crate::gameplay::player::{MainPlayer, Player, PlayerState};
 use crate::input::Input;
 use crate::resources::Resources;
 use luminance_glfw::{Action, Key, MouseButton, WindowEvent};
@@ -17,55 +17,57 @@ pub enum ClientCommand {
 pub fn process_input(world: &mut hecs::World, resources: &Resources) -> Vec<ClientCommand> {
     let mut commands = vec![];
 
-    if let Some((_e, (fps, camera, _))) = world
-        .query::<(&mut Fps, &mut Camera, &MainPlayer)>()
+    if let Some((_e, (fps, camera, _, p))) = world
+        .query::<(&mut Fps, &mut Camera, &MainPlayer, &Player)>()
         .iter()
         .next()
     {
         let input = resources.fetch::<Input>().unwrap();
 
-        let lateral_dir = {
-            if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
-                Some(camera.left)
-            } else if input.key_down.contains(&Key::Right) || input.key_down.contains(&Key::D) {
-                Some(-camera.left)
-            } else {
-                None
+        if let PlayerState::Alive = p.state {
+            let lateral_dir = {
+                if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
+                    Some(camera.left)
+                } else if input.key_down.contains(&Key::Right) || input.key_down.contains(&Key::D) {
+                    Some(-camera.left)
+                } else {
+                    None
+                }
+            };
+            let forward_dir = {
+                if input.key_down.contains(&Key::Up) || input.key_down.contains(&Key::W) {
+                    Some(camera.left.cross(glam::Vec3::unit_y()))
+                } else if input.key_down.contains(&Key::Down) || input.key_down.contains(&Key::S) {
+                    Some(-camera.left.cross(glam::Vec3::unit_y()))
+                } else {
+                    None
+                }
+            };
+
+            let direction = match (forward_dir, lateral_dir) {
+                (Some(fd), Some(ld)) => Some((fd + ld).normalize()),
+                (Some(fd), None) => Some(fd),
+                (None, Some(ld)) => Some(ld),
+                _ => None,
+            };
+
+            if let Some(direction) = direction {
+                commands.push(ClientCommand::Move(direction));
             }
-        };
-        let forward_dir = {
-            if input.key_down.contains(&Key::Up) || input.key_down.contains(&Key::W) {
-                Some(camera.left.cross(glam::Vec3::unit_y()))
-            } else if input.key_down.contains(&Key::Down) || input.key_down.contains(&Key::S) {
-                Some(-camera.left.cross(glam::Vec3::unit_y()))
-            } else {
-                None
+
+            // orientation of camera.
+            if let Some((offset_x, offset_y)) = input.mouse_delta {
+                apply_delta_dir(offset_x, offset_y, camera, fps.sensitivity);
+                commands.push(ClientCommand::LookAt(camera.pitch, camera.yaw));
             }
-        };
 
-        let direction = match (forward_dir, lateral_dir) {
-            (Some(fd), Some(ld)) => Some((fd + ld).normalize()),
-            (Some(fd), None) => Some(fd),
-            (None, Some(ld)) => Some(ld),
-            _ => None,
-        };
+            if input.has_key_down(Key::Space) {
+                commands.push(ClientCommand::Jump);
+            }
 
-        if let Some(direction) = direction {
-            commands.push(ClientCommand::Move(direction));
-        }
-
-        // orientation of camera.
-        if let Some((offset_x, offset_y)) = input.mouse_delta {
-            apply_delta_dir(offset_x, offset_y, camera, fps.sensitivity);
-            commands.push(ClientCommand::LookAt(camera.pitch, camera.yaw));
-        }
-
-        if input.has_key_down(Key::Space) {
-            commands.push(ClientCommand::Jump);
-        }
-
-        if input.has_mouse_event_happened(MouseButton::Button1, Action::Press) {
-            commands.push(ClientCommand::Shoot);
+            if input.has_mouse_event_happened(MouseButton::Button1, Action::Press) {
+                commands.push(ClientCommand::Shoot);
+            }
         }
     }
     commands

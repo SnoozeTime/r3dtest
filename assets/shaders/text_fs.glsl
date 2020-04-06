@@ -1,4 +1,4 @@
-uniform sampler2D font_tex;
+uniform sampler2D tex;
 
 in vec2 f_tex_pos;
 in vec4 f_color;
@@ -6,7 +6,7 @@ in vec4 f_color;
 out vec4 out_color;
 
 void main() {
-    float alpha = texture(font_tex, f_tex_pos).r;
+    float alpha = texture(tex, f_tex_pos).r;
     if (alpha <= 0.0) {
         discard;
     }

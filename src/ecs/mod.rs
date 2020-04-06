@@ -5,6 +5,9 @@ use serde_derive::{Deserialize, Serialize};
 pub mod serialization;
 const EPSILON: f32 = 0.00001;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameObjectReference(pub String);
+
 /// Simple transform component. Where is the game object.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Transform {

@@ -9,18 +9,38 @@ use crate::render::sprite::{ScreenPosition, SpriteRender};
 use crate::render::Render;
 use crate::resources::Resources;
 use hecs::{Entity, World};
+#[allow(unused_imports)]
+use log::{debug, info};
 use std::fs;
 
+use crate::event::GameEvent;
 use crate::gameplay::health::Health;
 use crate::net::snapshot::Deltable;
 use serde_derive::{Deserialize, Serialize};
+use shrev::{EventChannel, ReaderId};
+use std::time::Duration;
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum PlayerState {
     Alive,
     Dead,
-    Respawn,
+    // time to respawn.
+    Respawn(f32),
 }
+
+impl PartialEq<PlayerState> for PlayerState {
+    fn eq(&self, other: &PlayerState) -> bool {
+        match (*self, *other) {
+            (PlayerState::Alive, PlayerState::Alive) => true,
+            (PlayerState::Dead, PlayerState::Dead) => true,
+            (PlayerState::Respawn(respawn), PlayerState::Respawn(other_respawn)) => {
+                respawn == other_respawn
+            }
+            _ => false,
+        }
+    }
+}
+impl Eq for PlayerState {}
 
 /// Player is any human players. Up to 8 players in a multiplayer game.
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -77,6 +97,7 @@ pub fn spawn_player(
     };
     let mesh = Render {
         mesh: "cube".to_string(),
+        enabled: false,
     };
     let color = colors::RED;
     let cam = Camera::new(0., 0.);
@@ -110,7 +131,7 @@ pub fn spawn_player(
         mesh,
         color,
         Player {
-            state: PlayerState::Alive,
+            state: PlayerState::Respawn(5.0),
             nb: 0,
         },
         player_health,
@@ -122,36 +143,84 @@ pub fn spawn_player(
 
 /// Spawn the entities that has the sprites (crosshair, gun...)
 pub fn spawn_player_ui(world: &mut World) {
-    let ui_str = fs::read_to_string("config/ui.ron").unwrap();
+    let ui_str = fs::read_to_string(&format!(
+        "{}{}",
+        std::env::var("CONFIG_PATH").unwrap(),
+        "ui.ron"
+    ))
+    .unwrap();
     let ui_entities: Vec<serialization::SerializedEntity> = ron::de::from_str(&ui_str).unwrap();
     serialization::add_to_world(world, ui_entities);
+}
 
-    //    // crosshair.
-    //    let screen_pos = ScreenPosition {
-    //        x: 0.5,
-    //        y: 0.5,
-    //        w: 0.02,
-    //        h: 0.02,
-    //    };
-    //    let sprite = SpriteRender {
-    //        texture: "crosshair".to_string(),
-    //        sprite_nb: 0,
-    //    };
-    //
-    //    world.spawn((screen_pos, sprite));
-    //
-    //    // gun
-    //    {
-    //        let screen_pos = ScreenPosition {
-    //            x: 0.75,
-    //            y: 0.15,
-    //            w: 0.20,
-    //            h: 0.20,
-    //        };
-    //        let sprite = SpriteRender {
-    //            texture: "shotgun".to_string(),
-    //            sprite_nb: 0,
-    //        };
-    //        world.spawn((screen_pos, sprite));
-    //    }
+/// Monitor/Change state of players.
+pub struct PlayerSystem {
+    rdr_id: ReaderId<GameEvent>,
+}
+
+impl PlayerSystem {
+    pub fn new(resources: &mut Resources) -> Self {
+        let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
+        Self {
+            rdr_id: chan.register_reader(),
+        }
+    }
+
+    /// dt in seconds
+    pub fn update(&mut self, dt: Duration, world: &mut World, resources: &Resources) {
+        let chan = resources.fetch::<EventChannel<GameEvent>>().unwrap();
+
+        for ev in chan.read(&mut self.rdr_id) {
+            if let GameEvent::PlayerDead { entity } = ev {
+                let mut p = world
+                    .get_mut::<Player>(*entity)
+                    .expect("Player entity should have a player component");
+                let mut r = world
+                    .get_mut::<Render>(*entity)
+                    .expect("Player entity should have a render component");
+                info!(
+                    "Player system will change the player to Spawning: {:?} / {:?}",
+                    *p, *r
+                );
+                p.state = PlayerState::Respawn(5.0); // 5 seconds to respawn.
+                r.enabled = false;
+            }
+        }
+
+        // now, process player states.
+        let mut player_to_respawn = vec![];
+        for (e, p) in world.query::<&mut Player>().iter() {
+            if let PlayerState::Respawn(ref mut time_to_respawn) = p.state {
+                debug!("Player time to respawn = {:?}", time_to_respawn);
+                *time_to_respawn -= dt.as_secs_f32();
+
+                if *time_to_respawn <= 0.0 {
+                    debug!("Will respawn player");
+                    player_to_respawn.push(e);
+                }
+            }
+        }
+
+        self.respawn_players(world, player_to_respawn);
+    }
+
+    fn respawn_players(&self, world: &mut World, players: Vec<Entity>) {
+        for player in players {
+            let mut h = world
+                .get_mut::<Health>(player)
+                .expect("Player should have a health component");
+            let mut p = world
+                .get_mut::<Player>(player)
+                .expect("Player entity should have a player component");
+            let mut r = world
+                .get_mut::<Render>(player)
+                .expect("Player entity should have a render component");
+
+            h.current = h.max;
+            r.enabled = true;
+            p.state = PlayerState::Alive;
+
+            debug!("Player state now {:?} / {:?} / {:?}", *h, *r, *p);
+        }
+    }
 }

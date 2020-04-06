@@ -1,4 +1,4 @@
-use luminance_glfw::{GlfwSurface, Surface, WindowDim, WindowOpt};
+use luminance_glfw::{GlfwSurface, Key, Surface, WindowDim, WindowOpt};
 use std::process::exit;
 use std::time::Instant;
 
@@ -9,12 +9,16 @@ use serde_derive::{Deserialize, Serialize};
 use luminance_windowing::CursorMode;
 use std::fs::{self};
 
+use r3dtest::colors::RgbColor;
 use r3dtest::controller::{client, Controller};
 use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::health::HealthSystem;
 use r3dtest::gameplay::player::{spawn_player, spawn_player_ui, MainPlayer};
+use r3dtest::gameplay::ui::UiSystem;
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
+use r3dtest::render::sprite::ScreenPosition;
+use r3dtest::render::text::Text;
 use r3dtest::render::Renderer;
 use r3dtest::{
     ecs, ecs::Transform, event::GameEvent, input::Input, physics::RigidBody, resources::Resources,
@@ -31,7 +35,8 @@ fn main() {
     dotenv::dotenv().ok().unwrap();
     pretty_env_logger::init();
 
-    let window_config = fs::read_to_string("config.ron").unwrap();
+    let window_config =
+        fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + "config.ron").unwrap();
     let conf: WindowConfig = ron::de::from_str(&window_config).unwrap();
     let surface = GlfwSurface::new(
         WindowDim::Windowed(conf.width, conf.height),
@@ -62,14 +67,17 @@ fn setup_resources() -> Resources {
 }
 
 fn main_loop(mut surface: GlfwSurface) {
-    let mut renderer = Renderer::new(&mut surface);
-
     let mut current_time = Instant::now();
 
     let mut physics = PhysicWorld::default();
 
     // SETUP WORLD.
-    let world_str = fs::read_to_string("lol.ron").unwrap();
+    let world_str = fs::read_to_string(&format!(
+        "{}{}",
+        std::env::var("ASSET_PATH").unwrap(),
+        "world/lol.ron"
+    ))
+    .unwrap();
     let mut world = ecs::serialization::deserialize_world(world_str).unwrap();
 
     let mut body_to_entity = BodyToEntity::default();
@@ -89,6 +97,8 @@ fn main_loop(mut surface: GlfwSurface) {
     let mut garbage_collector = GarbageCollector::new(&mut resources);
     let mut health_system = HealthSystem::new(&mut resources);
     let controller = Controller;
+    let mut renderer = Renderer::new(&mut surface, &mut resources);
+    let mut ui_system = UiSystem::new(&mut world, &mut resources);
 
     'app: loop {
         {
@@ -98,6 +108,7 @@ fn main_loop(mut surface: GlfwSurface) {
                 break 'app;
             }
         }
+
         let cmds = client::process_input(&mut world, &resources)
             .drain(..)
             .map(|ev| (player_entity, Event::Client(ev)))
@@ -135,6 +146,7 @@ fn main_loop(mut surface: GlfwSurface) {
 
         // Update health if somebody has been SHOT.
         health_system.update(&world, &resources);
+        ui_system.update(&mut world, &mut resources);
 
         // ----------------------------------------------------
         // RENDERING
@@ -143,6 +155,8 @@ fn main_loop(mut surface: GlfwSurface) {
 
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);
+
+        renderer.check_updates(&mut surface, &world, &resources);
     }
 
     fs::write(

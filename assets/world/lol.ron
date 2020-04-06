@@ -7,6 +7,7 @@
         )),
         render: Some((
             mesh: "cube",
+            enabled: true,
         )),
         rigid_body: Some((
             mass: 10,
@@ -31,6 +32,7 @@
         )),
         render: Some((
             mesh: "cube",
+            enabled: true,
         )),
         rigid_body: Some((
             mass: 0,
@@ -51,6 +53,7 @@
         )),
         render: Some((
             mesh: "axis",
+            enabled: true,
         )),
         color: Some((
             r: 0,
@@ -66,6 +69,7 @@
         )),
         render: Some((
             mesh: "axis",
+            enabled: true,
         )),
         color: Some((
             r: 255,
@@ -81,6 +85,7 @@
         )),
         render: Some((
             mesh: "axis",
+            enabled: true,
         )),
         color: Some((
             r: 0,
@@ -89,23 +94,24 @@
         )),
     ),
     (
-            transform: Some((
-                translation: (0, 1, -10),
-                scale: (15, 3, 1),
-                rotation: (0, 0, 0, 1),
-            )),
-            rigid_body: Some((
-                mass: 1,
-                shape: AABB((15, 3, 1)),
-                ty: Static,
-            )),
-            render: Some((
-                mesh: "cube",
-            )),
-            color: Some((
-                r: 234,
-                g: 144,
-                b: 133,
-            )),
-        ),
+        transform: Some((
+            translation: (0, 1, -10),
+            scale: (15, 3, 1),
+            rotation: (0, 0, 0, 1),
+        )),
+        rigid_body: Some((
+            mass: 1,
+            shape: AABB((15, 3, 1)),
+            ty: Static,
+        )),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
+        color: Some((
+            r: 234,
+            g: 144,
+            b: 133,
+        )),
+    ),
 ]

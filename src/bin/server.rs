@@ -9,6 +9,7 @@ use std::fs;
 use r3dtest::controller::Controller;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::health::HealthSystem;
+use r3dtest::gameplay::player::PlayerSystem;
 use r3dtest::net::server::NetworkSystem;
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
 use r3dtest::{ecs, ecs::Transform, event::GameEvent, physics::RigidBody, resources::Resources};
@@ -35,7 +36,8 @@ fn main() {
     pretty_env_logger::init();
 
     let server_config: ServerConfig = {
-        let conf_str = fs::read_to_string("server.ron").unwrap();
+        let conf_str =
+            fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + "server.ron").unwrap();
         ron::de::from_str(&conf_str).unwrap()
     };
 
@@ -49,7 +51,12 @@ fn main() {
     let mut current_time = Instant::now();
     let mut physics = PhysicWorld::default();
 
-    let world_str = fs::read_to_string(server_config.world).unwrap();
+    let world_str = fs::read_to_string(format!(
+        "{}{}",
+        std::env::var("ASSET_PATH").unwrap(),
+        server_config.world
+    ))
+    .unwrap();
     let mut world = ecs::serialization::deserialize_world(world_str).unwrap();
 
     let mut body_to_entity = BodyToEntity::default();
@@ -71,6 +78,8 @@ fn main() {
         ecs::serialization::serialize_world(&world).unwrap(),
     )
     .unwrap();
+
+    let mut player_system = PlayerSystem::new(&mut resources);
 
     'app: loop {
         let client_events = backend.poll_events(&mut world, &mut physics, &resources);
@@ -99,6 +108,7 @@ fn main() {
 
         // Update health if somebody has been SHOT.
         health_system.update(&world, &resources);
+        player_system.update(dt, &mut world, &resources);
 
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);

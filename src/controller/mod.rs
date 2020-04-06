@@ -1,6 +1,7 @@
 use crate::camera::Camera;
 use crate::controller::client::ClientCommand;
 use crate::event::{Event, GameEvent};
+use crate::gameplay::player::{Player, PlayerState};
 use crate::physics::{BodyIndex, BodyToEntity, PhysicWorld, RigidBody};
 use crate::resources::Resources;
 use hecs::Entity;
@@ -30,11 +31,24 @@ pub fn apply_inputs(
     resources: &Resources,
 ) {
     for (e, ev) in inputs {
-        match ev {
-            Event::Client(cmd) => {
-                apply_cmd(e, cmd, world, physics, resources);
+        // don't do anything if player is not alive.
+        let can_process = {
+            let p = world
+                .get::<Player>(e)
+                .expect("Player entity should have a player component");
+            if let PlayerState::Alive = p.state {
+                true
+            } else {
+                false
             }
-            _ => (),
+        };
+        if can_process {
+            match ev {
+                Event::Client(cmd) => {
+                    apply_cmd(e, cmd, world, physics, resources);
+                }
+                _ => (),
+            }
         }
     }
 }
@@ -83,6 +97,7 @@ fn apply_cmd(
 
             let mut d = physics.raycast(h, glam::vec3(0.0, 0.0, 0.0), camera.front);
             println!("{:?}", d);
+            d.sort_by(|(toi, _), (toi_o, _)| toi.partial_cmp(toi_o).unwrap());
             if let Some(ev) = create_shot_event(d, resources) {
                 let mut event_channel = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
                 event_channel.single_write(ev);

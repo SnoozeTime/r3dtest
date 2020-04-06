@@ -1,5 +1,5 @@
 use super::sprite;
-use crate::render::VertexSementics;
+use crate::render::{text, VertexSementics};
 use luminance::linear::M44;
 use luminance::shader::program::{Program, Uniform, UniformInterface};
 use luminance::vertex::Semantics;
@@ -40,16 +40,31 @@ pub struct AxisShaderInterface {
 pub struct Shaders {
     pub regular_program: Program<VertexSementics, (), AxisShaderInterface>,
     pub sprite_program: Program<sprite::VertexSementics, (), sprite::ShaderInterface>,
+    pub text_program: Program<text::VertexSemantics, (), text::ShaderInterface>,
     rx: Receiver<Result<notify::Event, notify::Error>>,
     _watcher: RecommendedWatcher,
 }
 
+fn get_program_path(program_name: &str) -> String {
+    format!("{}{}", std::env::var("ASSET_PATH").unwrap(), program_name)
+}
+
 impl Shaders {
     pub fn new() -> Self {
-        let regular_program: Program<VertexSementics, (), AxisShaderInterface> =
-            load_program("shaders/axis_vs.glsl", "shaders/axis_fs.glsl");
+        let regular_program: Program<VertexSementics, (), AxisShaderInterface> = load_program(
+            get_program_path("shaders/axis_vs.glsl"),
+            get_program_path("shaders/axis_fs.glsl"),
+        );
 
-        let sprite_program = load_program("shaders/sprite_vs.glsl", "shaders/sprite_fs.glsl");
+        let sprite_program = load_program(
+            get_program_path("shaders/sprite_vs.glsl"),
+            get_program_path("shaders/sprite_fs.glsl"),
+        );
+        let text_program = load_program(
+            get_program_path("shaders/text_vs.glsl"),
+            get_program_path("shaders/text_fs.glsl"),
+        );
+
         let (tx, rx) = std::sync::mpsc::channel();
 
         // Add a path to be watched. All files and directories at that path and
@@ -61,12 +76,13 @@ impl Shaders {
             Watcher::new_immediate(move |res| tx.send(res).unwrap()).unwrap();
 
         watcher
-            .watch("./shaders/", RecursiveMode::Recursive)
+            .watch(get_program_path("shaders/"), RecursiveMode::Recursive)
             .unwrap();
 
         Self {
             regular_program,
             sprite_program,
+            text_program,
             rx,
             _watcher: watcher,
         }

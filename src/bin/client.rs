@@ -5,6 +5,7 @@ use luminance_windowing::CursorMode;
 use r3dtest::controller::client::ClientCommand;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::player::spawn_player_ui;
+use r3dtest::gameplay::ui::UiSystem;
 use r3dtest::net::client::ClientSystem;
 use r3dtest::render::Renderer;
 use r3dtest::{
@@ -28,7 +29,8 @@ fn main() {
     dotenv::dotenv().ok().unwrap();
     pretty_env_logger::init();
 
-    let window_config = fs::read_to_string("config.ron").unwrap();
+    let window_config =
+        fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + "config.ron").unwrap();
     let conf: WindowConfig = ron::de::from_str(&window_config).unwrap();
     let surface = GlfwSurface::new(
         WindowDim::Windowed(conf.width, conf.height),
@@ -48,7 +50,10 @@ fn main() {
     }
 }
 
-fn connection_loop(server_addr: SocketAddr) -> (hecs::World, hecs::Entity, ClientSystem) {
+fn connection_loop(
+    server_addr: SocketAddr,
+    resources: &mut Resources,
+) -> (hecs::World, hecs::Entity, ClientSystem) {
     // Tries to connect.
     let mut backend = ClientSystem::new(server_addr);
 
@@ -64,7 +69,7 @@ fn connection_loop(server_addr: SocketAddr) -> (hecs::World, hecs::Entity, Clien
         backend.send_commands(&vec![]);
 
         // receive state from server.
-        backend.poll_events(&mut world);
+        backend.poll_events(&mut world, resources);
 
         // If there is a camera, we can stop.
         if let Some((e, _)) = world.query::<&Camera>().iter().next() {
@@ -100,14 +105,15 @@ struct ClientConfig {
 
 fn main_loop(mut surface: GlfwSurface) {
     // 1. Create the surface and renderer.
-    let mut renderer = Renderer::new(&mut surface);
+    let mut resources = setup_resources();
+    let mut renderer = Renderer::new(&mut surface, &mut resources);
 
     // 2. CONNECT TO THE SERVER!
-    let conf_str = fs::read_to_string("client.ron").unwrap();
+    let conf_str =
+        fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + "client.ron").unwrap();
     let conf: ClientConfig = ron::de::from_str(&conf_str).unwrap();
-    let (mut world, camera_entity, mut backend) = connection_loop(conf.host.parse().unwrap());
-
-    let mut resources = setup_resources();
+    let (mut world, camera_entity, mut backend) =
+        connection_loop(conf.host.parse().unwrap(), &mut resources);
 
     let mut garbage_collector = GarbageCollector::new(&mut resources);
 
@@ -120,6 +126,7 @@ fn main_loop(mut surface: GlfwSurface) {
     )
     .unwrap();
     spawn_player_ui(&mut world);
+    let mut ui_system = UiSystem::new(&mut world, &mut resources);
 
     'app: loop {
         {
@@ -133,8 +140,10 @@ fn main_loop(mut surface: GlfwSurface) {
         backend.send_commands(&cmds);
 
         // State from the server - will update all positions and so on...
-        backend.poll_events(&mut world);
+        backend.poll_events(&mut world, &mut resources);
         renderer.update_view_matrix(&world);
+
+        ui_system.update(&mut world, &mut resources);
 
         // ----------------------------------------------------
         // RENDERING
@@ -143,6 +152,8 @@ fn main_loop(mut surface: GlfwSurface) {
 
         // remove all old entities.
         garbage_collector.collect_without_physics(&mut world, &resources);
+
+        renderer.check_updates(&mut surface, &world, &resources);
 
         // FIXME
         let now = Instant::now();

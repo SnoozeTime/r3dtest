@@ -77,7 +77,8 @@ pub struct PhysicWorld {
 
 impl Default for PhysicWorld {
     fn default() -> Self {
-        let conf_str = fs::read_to_string("physic.ron").unwrap();
+        let conf_str =
+            fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + "physic.ron").unwrap();
         let conf = ron::de::from_str(&conf_str).unwrap();
         Self {
             current_state: vec![],

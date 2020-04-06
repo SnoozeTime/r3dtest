@@ -53,7 +53,7 @@ pub struct SpriteRender {
 //}
 
 /// Screen position. x and y are between 0 and 1.
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
 pub struct ScreenPosition {
     pub x: f32,
     pub y: f32,
@@ -99,9 +99,10 @@ pub struct SpriteRenderer {
 
 impl SpriteRenderer {
     pub fn new(surface: &mut GlfwSurface) -> Self {
-        let image = read_image("./assets/crosshair.png").unwrap();
+        let image = read_image(std::env::var("ASSET_PATH").unwrap() + "crosshair.png").unwrap();
         let tex = load_from_disk(surface, image);
-        let shotgun_image = read_image("./assets/shotgun.png").unwrap();
+        let shotgun_image =
+            read_image(std::env::var("ASSET_PATH").unwrap() + "shotgun.png").unwrap();
         let shotgun_tex = load_from_disk(surface, shotgun_image);
         let mut textures = HashMap::new();
         textures.insert("crosshair".to_string(), tex);
