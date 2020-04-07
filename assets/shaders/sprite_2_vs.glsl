@@ -1,9 +1,9 @@
 
 const vec2[4] QUAD_POS = vec2[](
-vec2(-1., -1.),
-vec2( 1., -1.),
-vec2( 1.,  1.),
-vec2(-1.,  1.)
+    vec2(-1., -1.),
+    vec2( 1., -1.),
+    vec2( 1.,  1.),
+    vec2(-1.,  1.)
 );
 
 uniform mat4 projection;

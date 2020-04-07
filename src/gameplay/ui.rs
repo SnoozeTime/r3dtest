@@ -14,8 +14,8 @@ use std::collections::HashMap;
 
 pub struct UiSystem {
     health_entity: hecs::Entity,
-    armor_entity: hecs::Entity,
-    crosshair_entity: hecs::Entity,
+    _armor_entity: hecs::Entity,
+    _crosshair_entity: hecs::Entity,
     weapon_entity: hecs::Entity,
     rdr_id: ReaderId<GameEvent>,
 }
@@ -35,9 +35,9 @@ impl UiSystem {
         let crosshair_entity = spawn_crosshair(world);
         Self {
             health_entity,
-            armor_entity,
+            _armor_entity: armor_entity,
             weapon_entity,
-            crosshair_entity,
+            _crosshair_entity: crosshair_entity,
             rdr_id,
         }
     }
@@ -74,7 +74,7 @@ impl UiSystem {
 }
 
 fn spawn_health_counter(world: &mut hecs::World) -> hecs::Entity {
-    let h = if let Some((e, (h, _))) = world.query::<(&Health, &MainPlayer)>().iter().next() {
+    let h = if let Some((_, (h, _))) = world.query::<(&Health, &MainPlayer)>().iter().next() {
         format!("{}", h.current)
     } else {
         "100".to_string()

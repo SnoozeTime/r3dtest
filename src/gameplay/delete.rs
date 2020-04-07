@@ -41,7 +41,7 @@ impl GarbageCollector {
 
                 // remove from world
                 if let Err(e) = world.despawn(*e) {
-                    info!("Entity was already deleted (or does not exist?)");
+                    info!("Entity was already deleted (or does not exist?) = {}", e);
                 }
             }
         }

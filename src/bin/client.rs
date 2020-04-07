@@ -2,11 +2,10 @@
 use log::{debug, error, info};
 use luminance_glfw::{GlfwSurface, Surface, WindowDim, WindowOpt};
 use luminance_windowing::CursorMode;
-use r3dtest::controller::client::ClientCommand;
 use r3dtest::gameplay::delete::GarbageCollector;
-use r3dtest::gameplay::player::spawn_player_ui;
 use r3dtest::gameplay::ui::UiSystem;
 use r3dtest::net::client::ClientSystem;
+use r3dtest::render::assets::AssetManager;
 use r3dtest::render::Renderer;
 use r3dtest::{
     camera::Camera, controller::client, ecs, event::GameEvent, input::Input, resources::Resources,
@@ -112,7 +111,7 @@ fn main_loop(mut surface: GlfwSurface) {
     let conf_str =
         fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + "client.ron").unwrap();
     let conf: ClientConfig = ron::de::from_str(&conf_str).unwrap();
-    let (mut world, camera_entity, mut backend) =
+    let (mut world, _camera_entity, mut backend) =
         connection_loop(conf.host.parse().unwrap(), &mut resources);
 
     let mut garbage_collector = GarbageCollector::new(&mut resources);
@@ -125,8 +124,10 @@ fn main_loop(mut surface: GlfwSurface) {
         ecs::serialization::serialize_world(&world).unwrap(),
     )
     .unwrap();
-    spawn_player_ui(&mut world);
     let mut ui_system = UiSystem::new(&mut world, &mut resources);
+
+    let asset_manager = AssetManager::new(&mut surface);
+    resources.insert(asset_manager);
 
     'app: loop {
         {
@@ -148,7 +149,7 @@ fn main_loop(mut surface: GlfwSurface) {
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------
-        renderer.render(&mut surface, &world);
+        renderer.render(&mut surface, &world, &resources);
 
         // remove all old entities.
         garbage_collector.collect_without_physics(&mut world, &resources);

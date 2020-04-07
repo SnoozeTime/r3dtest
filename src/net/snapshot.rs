@@ -11,7 +11,7 @@ use crate::camera::Camera;
 use crate::collections::ring_buffer::RingBuffer;
 use crate::colors::RgbColor;
 use crate::controller::Fps;
-use crate::ecs::{Transform, TransformDelta};
+use crate::ecs::Transform;
 use crate::event::GameEvent;
 use crate::gameplay::health::Health;
 use crate::gameplay::player::{MainPlayer, Player};
@@ -53,16 +53,15 @@ pub enum SnapshotError {
     InvalidStateIndex,
 }
 
+/// Macro to generate the code that will compute delta for each entity. Just add a component name
+/// and a component to the macro to have it included in the state sent to players.
+///
+/// That works only for component that implements the `Deltable` trait.
 macro_rules! snapshot {
     ($(($name:ident, $component:ty)),+) => {
 
         pub type State = HashMap<
             Entity,
-//            (
-//            $(
-//                Option<$component>,
-//            )+
-//            ),
             EntityState
         >;
 
@@ -89,26 +88,6 @@ macro_rules! snapshot {
                 state.insert(e, entity_state);
             }
 
-//
-//            for (e, $($name,)+) in world
-//                .query::<(
-//                    $(
-//                    Option<&$component>,
-//                    )+
-//                )>()
-//                .iter()
-//            {
-//                state.insert(
-//                    e,
-//                    EntityState {
-//
-//                        $(
-//                        $name: $name.map(|c| c.clone()),
-//                        )+
-//                    }
-//
-//                );
-//            }
             state
         }
 
@@ -204,7 +183,6 @@ macro_rules! snapshot {
                         self.server_to_local_entity.insert(deltas.entity, entity);
 
                         if deltas.delta_health.is_some() {
-                            println!("DELTA HEALTH - NEW ENTITY");
                             chan.single_write(GameEvent::HealthUpdate {
                                 entity: entity,
                                 new_health: world.get::<Health>(entity).unwrap().current,
@@ -321,28 +299,6 @@ impl Snapshotter {
     pub fn set_current(&mut self, ecs: &hecs::World) {
         // it's making a copy.
         let state = state_from_current(ecs);
-        //        for (e, (t, r, c, p, h)) in ecs
-        //            .query::<(
-        //                Option<&Transform>,
-        //                Option<&Render>,
-        //                Option<&RgbColor>,
-        //                Option<&Player>,
-        //                Option<&Health>,
-        //            )>()
-        //            .iter()
-        //        {
-        //            state.insert(
-        //                e,
-        //                (
-        //                    t.map(|t| *t),
-        //                    r.map(|r| r.clone()),
-        //                    c.map(|c| *c),
-        //                    p.map(|p| *p),
-        //                    h.map(|h| *h),
-        //                ),
-        //            );
-        //        }
-
         self.state_buf.push(state);
     }
 
@@ -459,47 +415,3 @@ where
 {
     new.as_ref().and_then(|c| c.compute_complete())
 }
-//
-//fn compute_delta_entity(entity: Entity, current: &State, old: &State) -> DeltaEntity {
-//    let (delta_transform, delta_render, delta_color, delta_player, delta_health) =
-//        match (current.get(&entity), old.get(&entity)) {
-//            (Some(new_components), Some(old_components)) => (
-//                new_components.0.and_then(|t| {
-//                    t.compute_delta(&old_components.0.unwrap_or(Transform::default()))
-//                }),
-//                new_components.1.as_ref().and_then(|t| {
-//                    t.compute_delta(
-//                        &old_components
-//                            .1
-//                            .as_ref()
-//                            .map(|r| r.clone())
-//                            .unwrap_or(Render::default()),
-//                    )
-//                }),
-//                new_components.2.and_then(|t| {
-//                    t.compute_delta(&old_components.2.unwrap_or(RgbColor::default()))
-//                }),
-//                new_components
-//                    .3
-//                    .and_then(|p| p.compute_delta(&old_components.3.unwrap_or(Player::default()))),
-//                compute_delta_for_component(&new_components.4, &old_components.4),
-//            ),
-//            (Some(new_components), None) => (
-//                new_components.0.and_then(|t| t.compute_complete()),
-//                new_components.1.as_ref().and_then(|t| t.compute_complete()),
-//                new_components.2.and_then(|t| t.compute_complete()),
-//                new_components.3.and_then(|p| p.compute_complete()),
-//                compute_complete_for_component(&new_components.4),
-//            ),
-//            _ => (None, None, None, None, None),
-//        };
-//
-//    DeltaEntity {
-//        entity: entity.to_bits(),
-//        delta_render,
-//        delta_color,
-//        delta_transform,
-//        delta_player,
-//        delta_health,
-//    }
-//}

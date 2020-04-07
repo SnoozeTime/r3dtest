@@ -1,4 +1,4 @@
-use luminance_glfw::{GlfwSurface, Key, Surface, WindowDim, WindowOpt};
+use luminance_glfw::{GlfwSurface, Surface, WindowDim, WindowOpt};
 use std::process::exit;
 use std::time::{Duration, Instant};
 
@@ -10,16 +10,14 @@ use luminance_windowing::CursorMode;
 use std::fs::{self};
 
 use r3dtest::animation::AnimationSystem;
-use r3dtest::colors::RgbColor;
 use r3dtest::controller::{client, Controller};
 use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::health::HealthSystem;
-use r3dtest::gameplay::player::{spawn_player, spawn_player_ui, MainPlayer, PlayerSystem};
+use r3dtest::gameplay::player::{spawn_player, MainPlayer, PlayerSystem};
 use r3dtest::gameplay::ui::UiSystem;
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
-use r3dtest::render::sprite::ScreenPosition;
-use r3dtest::render::text::Text;
+use r3dtest::render::assets::AssetManager;
 use r3dtest::render::Renderer;
 use r3dtest::{
     ecs, ecs::Transform, event::GameEvent, input::Input, physics::RigidBody, resources::Resources,
@@ -69,8 +67,6 @@ fn setup_resources() -> Resources {
 }
 
 fn main_loop(mut surface: GlfwSurface) {
-    let mut current_time = Instant::now();
-
     let mut physics = PhysicWorld::default();
 
     // SETUP WORLD.
@@ -91,6 +87,8 @@ fn main_loop(mut surface: GlfwSurface) {
 
     let mut resources = setup_resources();
     resources.insert(body_to_entity);
+    let asset_manager = AssetManager::new(&mut surface);
+    resources.insert(asset_manager);
 
     let player_entity = spawn_player(&mut world, &mut physics, &resources);
     world.insert(player_entity, (MainPlayer,)).unwrap();
@@ -151,7 +149,7 @@ fn main_loop(mut surface: GlfwSurface) {
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------
-        renderer.render(&mut surface, &world);
+        renderer.render(&mut surface, &world, &resources);
 
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);

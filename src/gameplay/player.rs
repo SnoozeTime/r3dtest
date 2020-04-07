@@ -1,3 +1,11 @@
+//! Everything related to the players
+//! Will keep track of the state of each players:
+//! - Alive: the player is shooting as usual
+//! - Respawn: The player is dead and will respawn in a few seconds.
+//!
+//! Also has the `spawn_player` function that will spawn an entity for the player (should be
+//! replaced by some configuration file at some point...)
+
 use crate::camera::Camera;
 use crate::colors;
 use crate::controller::Fps;
@@ -5,7 +13,6 @@ use crate::ecs::serialization;
 use crate::ecs::Transform;
 use crate::physics::Shape::AABB;
 use crate::physics::{BodyToEntity, BodyType, PhysicWorld, RigidBody};
-use crate::render::sprite::{ScreenPosition, SpriteRender};
 use crate::render::Render;
 use crate::resources::Resources;
 use hecs::{Entity, World};

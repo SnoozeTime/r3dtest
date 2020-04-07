@@ -62,7 +62,11 @@ impl Input {
     pub fn has_mouse_event_happened(&self, btn: MouseButton, action: Action) -> bool {
         for ev in &self.events {
             match ev {
-                WindowEvent::MouseButton(btn, action, _) => return true,
+                WindowEvent::MouseButton(the_btn, the_action, _)
+                    if btn == *the_btn && action == *the_action =>
+                {
+                    return true
+                }
                 _ => (),
             }
         }

@@ -70,7 +70,7 @@ pub struct Text {
 pub struct TextRenderer {
     projection: glam::Mat4,
     texture: Texture<Dim2, NormR8UI>,
-    tess: Tess,
+    tess: Option<Tess>,
     render_state: RenderState,
 }
 
@@ -99,115 +99,10 @@ impl TextRenderer {
         )
         .expect("luminance texture creation");
 
-        // the first argument disables mipmap generation (we don’t care so far)
-        //tex.upload_raw(GenMipmaps::No, &texels).unwrap();
-
-        //let mut glyph_texture = GlGlyphTexture::new(glyph_brush.texture_dimensions());
-        let width = surface.width() as f32;
-        let height = surface.height() as f32;
-        let mut font_size: f32 = 60.0;
-
-        let scale = Scale::uniform((font_size).round());
-
-        glyph_brush.queue(Section {
-            text: "Bonjour",
-            scale,
-            screen_position: (width, height),
-            bounds: (width / 3.15, height),
-            color: [0.3, 0.3, 0.9, 1.0],
-            layout: Layout::default()
-                .h_align(HorizontalAlign::Right)
-                .v_align(VerticalAlign::Bottom),
-            ..Section::default()
-        });
-
-        let action = glyph_brush
-            .process_queued(
-                |rect, tex_data| unsafe {
-                    // Update part of gpu texture with new glyph alpha values
-                    tex.upload_part_raw(
-                        GenMipmaps::No,
-                        [rect.min.x as u32, rect.min.y as u32],
-                        [rect.width() as u32, rect.height() as u32],
-                        tex_data,
-                    );
-                },
-                |vertex_data| to_vertex(vertex_data),
-            )
-            .unwrap();
-
-        let tess = match action {
-            BrushAction::Draw(v) => {
-                println!("FIRST TIME {:?}", v);
-
-                TessBuilder::new(surface)
-                    .set_vertex_nb(4)
-                    .add_instances(v)
-                    .set_mode(Mode::TriangleStrip)
-                    .build()
-                    .unwrap()
-            }
-            _ => panic!("WUUUT"),
-        };
-
-        // -------------------------------------------------------------------------------------------------------------------
-        glyph_brush.queue(Section {
-            text: "100",
-            scale,
-            screen_position: (width, height),
-            bounds: (width / 3.15, height),
-            color: [0.3, 0.3, 0.9, 1.0],
-            layout: Layout::default()
-                .h_align(HorizontalAlign::Right)
-                .v_align(VerticalAlign::Bottom),
-            ..Section::default()
-        });
-
-        glyph_brush.queue(Section {
-            text: "Au revoir",
-            scale,
-            screen_position: (width / 2.0, height),
-            bounds: (width / 3.15, height),
-            color: [0.3, 0.3, 0.9, 1.0],
-            layout: Layout::default()
-                .h_align(HorizontalAlign::Right)
-                .v_align(VerticalAlign::Bottom),
-            ..Section::default()
-        });
-
-        let action = glyph_brush
-            .process_queued(
-                |rect, tex_data| unsafe {
-                    // Update part of gpu texture with new glyph alpha values
-                    tex.upload_part_raw(
-                        GenMipmaps::No,
-                        [rect.min.x as u32, rect.min.y as u32],
-                        [rect.width() as u32, rect.height() as u32],
-                        tex_data,
-                    );
-                },
-                |vertex_data| to_vertex(vertex_data),
-            )
-            .unwrap();
-
-        let tess = match action {
-            BrushAction::Draw(v) => {
-                println!("SECOND TIME {:?}", v);
-                TessBuilder::new(surface)
-                    .set_vertex_nb(4)
-                    .add_instances(v)
-                    .set_mode(Mode::TriangleStrip)
-                    .build()
-                    .unwrap()
-            }
-            _ => panic!("WUUUT"),
-        };
-        // _-------------------------------------
-
         Self {
             projection,
             texture: tex,
-            tess,
+            tess: None,
             render_state,
         }
     }
@@ -220,7 +115,6 @@ impl TextRenderer {
     ) {
         let width = surface.width() as f32;
         let height = surface.height() as f32;
-        let mut font_size: f32 = 60.0;
 
         for (_, (text, position, color)) in
             world.query::<(&Text, &ScreenPosition, &RgbColor)>().iter()
@@ -247,12 +141,14 @@ impl TextRenderer {
             .process_queued(
                 |rect, tex_data| {
                     // Update part of gpu texture with new glyph alpha values
-                    self.texture.upload_part_raw(
-                        GenMipmaps::No,
-                        [rect.min.x as u32, rect.min.y as u32],
-                        [rect.width() as u32, rect.height() as u32],
-                        tex_data,
-                    );
+                    self.texture
+                        .upload_part_raw(
+                            GenMipmaps::No,
+                            [rect.min.x as u32, rect.min.y as u32],
+                            [rect.width() as u32, rect.height() as u32],
+                            tex_data,
+                        )
+                        .expect("Cannot upload part of texture");
                 },
                 |vertex_data| to_vertex(vertex_data),
             )
@@ -260,12 +156,14 @@ impl TextRenderer {
 
         match action {
             BrushAction::Draw(v) => {
-                self.tess = TessBuilder::new(surface)
-                    .set_vertex_nb(4)
-                    .add_instances(v)
-                    .set_mode(Mode::TriangleStrip)
-                    .build()
-                    .unwrap();
+                self.tess = Some(
+                    TessBuilder::new(surface)
+                        .set_vertex_nb(4)
+                        .add_instances(v)
+                        .set_mode(Mode::TriangleStrip)
+                        .build()
+                        .unwrap(),
+                );
             }
             BrushAction::ReDraw => (),
         };
@@ -275,15 +173,17 @@ impl TextRenderer {
     where
         S: GraphicsContext,
     {
-        shd_gate.shade(&shaders.text_program, |iface, mut rdr_gate| {
-            iface.transform.update(self.projection.to_cols_array_2d());
-            let texture = pipeline.bind_texture(&self.texture);
-            iface.tex.update(&texture);
+        if let Some(tess) = self.tess.as_ref() {
+            shd_gate.shade(&shaders.text_program, |iface, mut rdr_gate| {
+                iface.transform.update(self.projection.to_cols_array_2d());
+                let texture = pipeline.bind_texture(&self.texture);
+                iface.tex.update(&texture);
 
-            rdr_gate.render(&self.render_state, |mut tess_gate| {
-                tess_gate.render(self.tess.slice(..));
+                rdr_gate.render(&self.render_state, |mut tess_gate| {
+                    tess_gate.render(tess.slice(..));
+                });
             });
-        });
+        }
     }
 }
 
@@ -336,20 +236,4 @@ fn to_vertex(
 
     info!("vertex -> {:?}", v);
     v
-}
-
-fn load_from_disk(surface: &mut GlfwSurface, img: image::RgbaImage) -> Texture<Dim2, NormR8UI> {
-    let (width, height) = img.dimensions();
-    let texels = img.into_raw();
-
-    // create the luminance texture; the third argument is the number of mipmaps we want (leave it
-    // to 0 for now) and the latest is the sampler to use when sampling the texels in the
-    // shader (we’ll just use the default one)
-    let tex = Texture::new(surface, [width, height], 0, Sampler::default())
-        .expect("luminance texture creation");
-
-    // the first argument disables mipmap generation (we don’t care so far)
-    tex.upload_raw(GenMipmaps::No, &texels).unwrap();
-
-    tex
 }

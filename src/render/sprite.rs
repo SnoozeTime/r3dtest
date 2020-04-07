@@ -1,21 +1,19 @@
+use crate::render::assets::SpriteCache;
 use crate::render::shaders::Shaders;
 use hecs::World;
 use luminance::blending::{Equation, Factor};
 use luminance::context::GraphicsContext;
 use luminance::linear::M44;
 use luminance::pipeline::{BoundTexture, Pipeline, ShadingGate};
-use luminance::pixel::{NormRGBA8UI, NormUnsigned};
+use luminance::pixel::NormUnsigned;
 use luminance::render_state::RenderState;
 use luminance::shader::program::Uniform;
 use luminance::tess::TessSliceIndex;
 use luminance::tess::{Mode, Tess, TessBuilder};
-use luminance::texture::{Dim2, GenMipmaps, Sampler, Texture};
+use luminance::texture::Dim2;
 use luminance_derive::{Semantics, UniformInterface, Vertex};
 use luminance_glfw::{GlfwSurface, Surface};
 use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
 
 /// Component to display a sprite on the screen.
 ///
@@ -54,30 +52,6 @@ impl SpriteMetadata {
         [self.x, self.y, self.w, self.h]
     }
 }
-//impl Deltable for SpriteRender {
-//    type Delta = SpriteRender;
-//
-//    fn compute_delta(&self, old: &Self) -> Option<Self::Delta> {
-//        if self == old {
-//            None
-//        } else {
-//            Some(self.clone())
-//        }
-//    }
-//
-//    fn compute_complete(&self) -> Option<Self::Delta> {
-//        Some(self.clone())
-//    }
-//
-//    fn apply_delta(&mut self, delta: &Self::Delta) {
-//        self.sprite_nb = delta.sprite_nb;
-//        self.texture = delta.texture.clone();
-//    }
-//
-//    fn new_component(delta: &Self::Delta) -> Self {
-//        delta.clone()
-//    }
-//}
 
 /// Screen position. x and y are between 0 and 1.
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, Default)]
@@ -120,7 +94,6 @@ pub struct ShaderInterface {
 }
 
 pub struct SpriteRenderer {
-    textures: HashMap<String, (Texture<Dim2, NormRGBA8UI>, Metadata)>,
     w: f32,
     h: f32,
     tess: Tess,
@@ -129,25 +102,6 @@ pub struct SpriteRenderer {
 
 impl SpriteRenderer {
     pub fn new(surface: &mut GlfwSurface) -> Self {
-        //        let image = read_image(std::env::var("ASSET_PATH").unwrap() + "crosshair.png").unwrap();
-        //        let tex = load_from_disk(surface, image);
-        //        let shotgun_image =
-        //            read_image(std::env::var("ASSET_PATH").unwrap() + "shotgun.png").unwrap();
-        //        let shotgun_tex = load_from_disk(surface, shotgun_image);
-        let mut textures = HashMap::new();
-
-        let crosshair = load_texture(
-            surface,
-            std::env::var("ASSET_PATH").unwrap() + "sprites/crosshair.png",
-        );
-        let shotgun_tex = load_texture(
-            surface,
-            std::env::var("ASSET_PATH").unwrap() + "sprites/shotgun.png",
-        );
-
-        textures.insert("crosshair".to_string(), crosshair);
-        textures.insert("shotgun".to_string(), shotgun_tex);
-
         let render_state = RenderState::default().set_blending((
             Equation::Additive,
             Factor::SrcAlpha,
@@ -159,7 +113,6 @@ impl SpriteRenderer {
             .build()
             .unwrap();
         Self {
-            textures,
             tess,
             w: surface.width() as f32,
             h: surface.height() as f32,
@@ -172,6 +125,7 @@ impl SpriteRenderer {
         pipeline: &Pipeline,
         shd_gate: &mut ShadingGate<S>,
         world: &World,
+        sprite_cache: &SpriteCache,
         shaders: &Shaders,
     ) where
         S: GraphicsContext,
@@ -182,7 +136,7 @@ impl SpriteRenderer {
             iface.projection.update(projection.to_cols_array_2d());
 
             for (_, (pos, sprite)) in world.query::<(&ScreenPosition, &SpriteRender)>().iter() {
-                let assets = self.textures.get(&sprite.texture).unwrap();
+                let assets = sprite_cache.get(&sprite.texture).unwrap();
                 let texture = pipeline.bind_texture(&assets.0);
                 let metadata = &assets.1;
 
@@ -209,45 +163,4 @@ impl SpriteRenderer {
             }
         });
     }
-}
-
-// read the texture into memory as a whole bloc (i.e. no streaming)
-fn read_image<P: AsRef<Path>>(path: P) -> Option<image::RgbaImage> {
-    image::open(path).map(|img| img.flipv().to_rgba()).ok()
-}
-
-fn load_texture<P: AsRef<Path>>(
-    surface: &mut GlfwSurface,
-    path: P,
-) -> (Texture<Dim2, NormRGBA8UI>, Metadata) {
-    let mut metadata_path = path.as_ref().to_path_buf();
-
-    // first the texture.
-
-    let image = read_image(path).unwrap();
-    let tex = load_from_disk(surface, image);
-
-    // then the metadata.
-    metadata_path.set_extension("ron");
-    println!("Metadata path = {:?}", metadata_path);
-    let metadata: Metadata =
-        ron::de::from_str(&fs::read_to_string(metadata_path).unwrap()).unwrap();
-
-    (tex, metadata)
-}
-
-fn load_from_disk(surface: &mut GlfwSurface, img: image::RgbaImage) -> Texture<Dim2, NormRGBA8UI> {
-    let (width, height) = img.dimensions();
-    let texels = img.into_raw();
-
-    // create the luminance texture; the third argument is the number of mipmaps we want (leave it
-    // to 0 for now) and the latest is the sampler to use when sampling the texels in the
-    // shader (we’ll just use the default one)
-    let tex = Texture::new(surface, [width, height], 0, Sampler::default())
-        .expect("luminance texture creation");
-
-    // the first argument disables mipmap generation (we don’t care so far)
-    tex.upload_raw(GenMipmaps::No, &texels).unwrap();
-
-    tex
 }

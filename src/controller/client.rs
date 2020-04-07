@@ -4,7 +4,7 @@ use crate::event::GameEvent;
 use crate::gameplay::player::{MainPlayer, Player, PlayerState};
 use crate::input::Input;
 use crate::resources::Resources;
-use luminance_glfw::{Action, Key, MouseButton, WindowEvent};
+use luminance_glfw::{Action, Key, MouseButton};
 use serde_derive::{Deserialize, Serialize};
 use shrev::EventChannel;
 
