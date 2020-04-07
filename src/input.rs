@@ -25,6 +25,7 @@ impl Input {
                 }
                 WindowEvent::Key(k, _, Action::Press, _) => {
                     self.key_down.insert(k);
+                    self.events.push(event);
                 }
                 WindowEvent::Key(k, _, Action::Release, _) => {
                     self.key_down.remove(&k);
@@ -64,6 +65,20 @@ impl Input {
             match ev {
                 WindowEvent::MouseButton(the_btn, the_action, _)
                     if btn == *the_btn && action == *the_action =>
+                {
+                    return true
+                }
+                _ => (),
+            }
+        }
+        false
+    }
+
+    pub fn has_key_event_happened(&self, key: Key, action: Action) -> bool {
+        for ev in &self.events {
+            match ev {
+                WindowEvent::Key(the_k, _, the_action, _)
+                    if key == *the_k && action == *the_action =>
                 {
                     return true
                 }

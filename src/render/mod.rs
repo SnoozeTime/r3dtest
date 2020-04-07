@@ -11,6 +11,7 @@ use serde_derive::{Deserialize, Serialize};
 
 pub mod assets;
 pub mod billboard;
+pub mod debug;
 pub mod shaders;
 pub mod sprite;
 pub mod text;
@@ -21,7 +22,10 @@ use crate::ecs::Transform;
 use crate::event::GameEvent;
 use crate::gameplay::player::{MainPlayer, Player, PlayerState};
 use crate::net::snapshot::Deltable;
+use crate::physics::PhysicWorld;
 use crate::render::assets::AssetManager;
+use crate::render::billboard::BillboardRenderer;
+use crate::render::debug::DebugRenderer;
 use crate::render::shaders::Shaders;
 use crate::render::sprite::SpriteRenderer;
 use crate::render::text::TextRenderer;
@@ -93,6 +97,9 @@ const Z_FAR: f32 = 100.;
 pub struct Renderer {
     sprite_renderer: SpriteRenderer,
     text_renderer: TextRenderer,
+    billboard_renderer: BillboardRenderer,
+    debug_renderer: DebugRenderer,
+
     backbuffer: Framebuffer<Dim2, (), ()>,
     shaders: Shaders,
 
@@ -102,6 +109,8 @@ pub struct Renderer {
 
     // text updates.
     rdr_id: ReaderId<GameEvent>,
+
+    debug: bool,
 }
 
 impl Renderer {
@@ -109,7 +118,9 @@ impl Renderer {
         let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(DEJA_VU).build();
 
         let sprite_renderer = SpriteRenderer::new(surface);
+        let billboard_renderer = BillboardRenderer::new(surface);
         let text_renderer = TextRenderer::new(surface, &mut glyph_brush);
+        let debug_renderer = DebugRenderer::new(surface);
         let backbuffer = surface.back_buffer().unwrap();
         let rdr_id = {
             let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
@@ -127,13 +138,16 @@ impl Renderer {
 
         Self {
             sprite_renderer,
+            billboard_renderer,
             text_renderer,
+            debug_renderer,
             backbuffer,
             shaders,
             projection,
             view: glam::Mat4::identity(),
             glyph_brush,
             rdr_id,
+            debug: true,
         }
     }
 
@@ -171,7 +185,17 @@ impl Renderer {
             self.update_text(surface, world);
         }
     }
-    pub fn render(&mut self, surface: &mut GlfwSurface, world: &World, resources: &Resources) {
+
+    pub fn toggle_debug(&mut self) {
+        self.debug = !self.debug;
+    }
+    pub fn render(
+        &mut self,
+        surface: &mut GlfwSurface,
+        world: &World,
+        physics: Option<&PhysicWorld>,
+        resources: &Resources,
+    ) {
         let assets = resources.fetch::<AssetManager>().unwrap();
         self.shaders.update();
 
@@ -211,6 +235,29 @@ impl Renderer {
                         });
                     }
                 });
+
+                self.billboard_renderer.render(
+                    &self.projection,
+                    &self.view,
+                    &pipeline,
+                    &mut shd_gate,
+                    world,
+                    &assets.sprites,
+                    &self.shaders,
+                );
+
+                if self.debug {
+                    if let Some(physics) = physics {
+                        self.debug_renderer.render(
+                            &self.projection,
+                            &self.view,
+                            &mut shd_gate,
+                            world,
+                            &self.shaders,
+                            physics,
+                        );
+                    }
+                }
 
                 if should_render_player_ui {
                     self.sprite_renderer.render(

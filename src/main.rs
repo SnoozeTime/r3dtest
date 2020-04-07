@@ -1,4 +1,4 @@
-use luminance_glfw::{GlfwSurface, Surface, WindowDim, WindowOpt};
+use luminance_glfw::{Action, GlfwSurface, Key, Surface, WindowDim, WindowOpt};
 use std::process::exit;
 use std::time::{Duration, Instant};
 
@@ -112,6 +112,9 @@ fn main_loop(mut surface: GlfwSurface) {
             if input.should_exit {
                 break 'app;
             }
+            if input.has_key_event_happened(Key::F1, Action::Press) {
+                renderer.toggle_debug();
+            }
         }
 
         let cmds = client::process_input(&mut world, &mut resources)
@@ -149,7 +152,7 @@ fn main_loop(mut surface: GlfwSurface) {
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------
-        renderer.render(&mut surface, &world, &resources);
+        renderer.render(&mut surface, &world, Some(&physics), &resources);
 
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);

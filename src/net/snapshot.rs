@@ -15,7 +15,7 @@ use crate::ecs::Transform;
 use crate::event::GameEvent;
 use crate::gameplay::health::Health;
 use crate::gameplay::player::{MainPlayer, Player};
-use crate::render::Render;
+use crate::render::{billboard::Billboard, Render};
 use crate::resources::Resources;
 use hecs::{Entity, EntityBuilder, World};
 #[allow(unused_imports)]
@@ -225,7 +225,8 @@ snapshot! {
     (delta_render, Render),
     (delta_color, RgbColor),
     (delta_player, Player),
-    (delta_health, Health)
+    (delta_health, Health),
+    (delta_billboard, Billboard)
 }
 
 /// Apply the latest server state to the client state.

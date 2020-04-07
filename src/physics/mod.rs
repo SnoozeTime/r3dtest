@@ -332,6 +332,25 @@ impl PhysicWorld {
         }
     }
 
+    /// Return bounding box (good for debug rendering)
+    pub fn get_aabb(&self, h: BodyIndex) -> Option<Aabb> {
+        if let Some(Some(current_state)) = self.current_state.get(h) {
+            let Shape::AABB(halfwidth) = current_state.shape;
+            let aabb = Aabb::new(current_state.position, halfwidth);
+            Some(aabb)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_collider_type(&self, h: BodyIndex) -> Option<BodyType> {
+        if let Some(Some(current_state)) = self.current_state.get(h) {
+            Some(current_state.ty)
+        } else {
+            None
+        }
+    }
+
     /// Return true if pos + delta is within an AABB
     pub fn check_collide(&self, h: BodyIndex, delta: glam::Vec3) -> bool {
         let my_shape = self.current_state.get(h).unwrap().as_ref().unwrap().shape;

@@ -34,9 +34,14 @@ impl AssetManager {
             surface,
             std::env::var("ASSET_PATH").unwrap() + "sprites/shotgun.png",
         );
+        let soldier_tex = load_texture(
+            surface,
+            std::env::var("ASSET_PATH").unwrap() + "sprites/soldier.png",
+        );
 
         sprites.insert("crosshair".to_string(), crosshair);
         sprites.insert("shotgun".to_string(), shotgun_tex);
+        sprites.insert("soldier".to_string(), soldier_tex);
 
         let meshes = load_models(
             surface,
@@ -62,8 +67,8 @@ pub enum Error {
 }
 #[derive(Debug)]
 pub struct Obj {
-    vertices: Vec<super::Vertex>,
-    indices: Vec<VertexIndex>,
+    pub vertices: Vec<super::Vertex>,
+    pub indices: Vec<VertexIndex>,
 }
 
 impl Obj {

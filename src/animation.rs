@@ -1,3 +1,4 @@
+use crate::render::billboard::Billboard;
 use crate::render::sprite::SpriteRender;
 use log::error;
 use serde_derive::{Deserialize, Serialize};
@@ -39,18 +40,40 @@ pub struct AnimationController {
     pub current_animation: Option<String>,
 }
 
+trait Animatable: Send + Sync {
+    fn set_animation_frame(&mut self, frame: usize);
+}
+
+impl Animatable for SpriteRender {
+    fn set_animation_frame(&mut self, frame: usize) {
+        self.sprite_nb = frame;
+    }
+}
+
+impl Animatable for Billboard {
+    fn set_animation_frame(&mut self, frame: usize) {
+        self.sprite_nb = frame;
+    }
+}
+
 pub struct AnimationSystem;
 
 impl AnimationSystem {
     pub fn animate(&mut self, world: &mut hecs::World) {
-        for (_, (controller, sprite)) in world
-            .query::<(&mut AnimationController, &mut SpriteRender)>()
-            .iter()
+        self.animate_impl::<SpriteRender>(world);
+        self.animate_impl::<Billboard>(world);
+    }
+
+    fn animate_impl<T>(&mut self, world: &mut hecs::World)
+    where
+        T: Animatable + 'static,
+    {
+        for (_, (controller, sprite)) in world.query::<(&mut AnimationController, &mut T)>().iter()
         {
             let mut animation_finished = false;
             if let Some(ref animation_name) = controller.current_animation {
                 if let Some(ref mut animation) = controller.animations.get_mut(animation_name) {
-                    sprite.sprite_nb = animation.keyframes[animation.current_index].0;
+                    sprite.set_animation_frame(animation.keyframes[animation.current_index].0);
 
                     animation.elapsed_frame += 1;
                     if animation.elapsed_frame > animation.keyframes[animation.current_index].1 {

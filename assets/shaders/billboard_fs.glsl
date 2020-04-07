@@ -1,5 +1,10 @@
-out vec3 frag_color;
+in vec2 v_uv;
+out vec4 frag;
+
+uniform sampler2D tex;
 
 void main() {
-    frag_color = vec3(1.0, 0.0, 1.0);
+    vec4 texture = texture(tex, v_uv);
+    if ( texture.a < 0.1 ) discard;
+    frag = texture;
 }

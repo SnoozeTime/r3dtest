@@ -1,5 +1,5 @@
 use super::sprite;
-use crate::render::{text, VertexSementics};
+use crate::render::{billboard, debug, text, VertexSementics};
 use luminance::linear::M44;
 use luminance::shader::program::{Program, Uniform, UniformInterface};
 use luminance::vertex::Semantics;
@@ -41,6 +41,8 @@ pub struct Shaders {
     pub regular_program: Program<VertexSementics, (), AxisShaderInterface>,
     pub sprite_program: Program<sprite::VertexSementics, (), sprite::ShaderInterface>,
     pub text_program: Program<text::VertexSemantics, (), text::ShaderInterface>,
+    pub billboard_program: Program<(), (), billboard::ShaderInterface>,
+    pub debug_program: Program<debug::VertexSemantics, (), debug::ShaderInterface>,
     rx: Receiver<Result<notify::Event, notify::Error>>,
     _watcher: RecommendedWatcher,
 }
@@ -64,6 +66,15 @@ impl Shaders {
             get_program_path("shaders/text_vs.glsl"),
             get_program_path("shaders/text_fs.glsl"),
         );
+        let billboard_program = load_program(
+            get_program_path("shaders/billboard_vs.glsl"),
+            get_program_path("shaders/billboard_fs.glsl"),
+        );
+
+        let debug_program = load_program(
+            get_program_path("shaders/debug_vs.glsl"),
+            get_program_path("shaders/debug_fs.glsl"),
+        );
 
         let (tx, rx) = std::sync::mpsc::channel();
 
@@ -83,6 +94,8 @@ impl Shaders {
             regular_program,
             sprite_program,
             text_program,
+            billboard_program,
+            debug_program,
             rx,
             _watcher: watcher,
         }
@@ -102,8 +115,26 @@ impl Shaders {
 
         if should_reload {
             println!("Reload shaders");
-            self.regular_program = load_program("shaders/axis_vs.glsl", "shaders/axis_fs.glsl");
-            self.sprite_program = load_program("shaders/sprite_vs.glsl", "shaders/sprite_fs.glsl");
+            self.regular_program = load_program(
+                get_program_path("shaders/axis_vs.glsl"),
+                get_program_path("shaders/axis_fs.glsl"),
+            );
+            self.sprite_program = load_program(
+                get_program_path("shaders/sprite_2_vs.glsl"),
+                get_program_path("shaders/sprite_fs.glsl"),
+            );
+            self.billboard_program = load_program(
+                get_program_path("shaders/billboard_vs.glsl"),
+                get_program_path("shaders/billboard_fs.glsl"),
+            );
+            self.text_program = load_program(
+                get_program_path("shaders/text_vs.glsl"),
+                get_program_path("shaders/text_fs.glsl"),
+            );
+            self.debug_program = load_program(
+                get_program_path("shaders/debug_vs.glsl"),
+                get_program_path("shaders/debug_fs.glsl"),
+            );
         }
     }
 }

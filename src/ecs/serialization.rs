@@ -6,8 +6,11 @@ use crate::colors::RgbColor;
 use crate::controller::Fps;
 use crate::gameplay::health::Health;
 use crate::physics::RigidBody;
-use crate::render::sprite::{ScreenPosition, SpriteRender};
-use crate::render::Render;
+use crate::render::{
+    billboard::Billboard,
+    sprite::{ScreenPosition, SpriteRender},
+    Render,
+};
 use hecs::World;
 use serde_derive::{Deserialize, Serialize};
 use thiserror::Error;
@@ -124,5 +127,6 @@ serialize! {
     (health, Health),
     (sprite, SpriteRender),
     (screen_position, ScreenPosition),
-    (animation, AnimationController)
+    (animation, AnimationController),
+    (billboard, Billboard)
 }
