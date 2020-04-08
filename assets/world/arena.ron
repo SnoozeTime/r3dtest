@@ -114,33 +114,4 @@
             b: 133,
         )),
     ),
-    (
-        transform: Some((
-            translation: (0, 1, 4),
-            scale: (0.53, 1, 1),
-            rotation: (0, 0, 0, 1),
-        )),
-        billboard: Some((
-            texture: "soldier",
-            sprite_nb: 0,
-            enabled: true,
-        )),
-        animation: Some((
-            animations: {
-                "walk_backward": (
-                    keyframes: [(0, 10), (1, 10), (2, 10), (3, 10)],
-                    single: false,
-                    current_index: 0,
-                    elapsed_frame: 0
-                ),
-                "walk_forward": (
-                    keyframes: [(4, 10), (5, 10), (6, 10), (7, 10)],
-                    single: false,
-                    current_index: 0,
-                    elapsed_frame: 0
-                )
-            },
-            current_animation: Some("walk_forward")
-        ))
-    )
 ]

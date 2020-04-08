@@ -13,11 +13,11 @@ pub struct NetMessage {
 
 impl NetMessage {
     /// return the message ready to be sent. Consume the object.
-    pub fn pack(&self) -> Result<(Bytes, SocketAddr), serde_json::error::Error> {
+    pub fn pack(&self) -> Result<(Bytes, SocketAddr), bincode::Error> {
         Ok((serialize(&self.content)?, self.target))
     }
 
-    pub fn unpack(buf: Bytes, target: SocketAddr) -> Result<NetMessage, serde_json::error::Error> {
+    pub fn unpack(buf: Bytes, target: SocketAddr) -> Result<NetMessage, bincode::Error> {
         Ok(NetMessage {
             content: deserialize(buf)?,
             target,
@@ -71,11 +71,13 @@ pub struct DeltaSnapshotInfo {
     pub delta: DeltaSnapshot,
 }
 
-pub fn deserialize(bytes: Bytes) -> Result<Packet, serde_json::error::Error> {
-    serde_json::from_slice::<Packet>(&bytes.to_vec())
+pub fn deserialize(bytes: Bytes) -> Result<Packet, bincode::Error> {
+    bincode::deserialize::<Packet>(&bytes[..])
+    //serde_json::from_slice::<Packet>(&bytes.to_vec())
 }
 
-pub fn serialize(msg: &Packet) -> Result<Bytes, serde_json::error::Error> {
-    let b = serde_json::to_vec(msg)?;
+pub fn serialize(msg: &Packet) -> Result<Bytes, bincode::Error> {
+    let b = bincode::serialize(msg)?;
+    //let b = serde_json::to_vec(msg)?;
     Ok(b.into())
 }

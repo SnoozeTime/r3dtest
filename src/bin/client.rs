@@ -2,8 +2,9 @@
 use log::{debug, error, info};
 use luminance_glfw::{GlfwSurface, Surface, WindowDim, WindowOpt};
 use luminance_windowing::CursorMode;
-use r3dtest::gameplay::delete::GarbageCollector;
+use r3dtest::animation::AnimationSystem;
 use r3dtest::gameplay::ui::UiSystem;
+use r3dtest::gameplay::{delete::GarbageCollector, player::update_player_orientations};
 use r3dtest::net::client::ClientSystem;
 use r3dtest::render::assets::AssetManager;
 use r3dtest::render::Renderer;
@@ -128,6 +129,7 @@ fn main_loop(mut surface: GlfwSurface) {
 
     let asset_manager = AssetManager::new(&mut surface);
     resources.insert(asset_manager);
+    let mut animation_system = AnimationSystem;
 
     'app: loop {
         {
@@ -143,13 +145,14 @@ fn main_loop(mut surface: GlfwSurface) {
         // State from the server - will update all positions and so on...
         backend.poll_events(&mut world, &mut resources);
         renderer.update_view_matrix(&world);
-
+        animation_system.animate(&mut world);
         ui_system.update(&mut world, &mut resources);
+        update_player_orientations(&mut world);
 
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------
-        renderer.render(&mut surface, &world, None, &resources);
+        renderer.render(&mut surface, &world, &resources);
 
         // remove all old entities.
         garbage_collector.collect_without_physics(&mut world, &resources);

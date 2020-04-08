@@ -22,7 +22,6 @@ use crate::ecs::Transform;
 use crate::event::GameEvent;
 use crate::gameplay::player::{MainPlayer, Player, PlayerState};
 use crate::net::snapshot::Deltable;
-use crate::physics::PhysicWorld;
 use crate::render::assets::AssetManager;
 use crate::render::billboard::BillboardRenderer;
 use crate::render::debug::DebugRenderer;
@@ -189,13 +188,7 @@ impl Renderer {
     pub fn toggle_debug(&mut self) {
         self.debug = !self.debug;
     }
-    pub fn render(
-        &mut self,
-        surface: &mut GlfwSurface,
-        world: &World,
-        physics: Option<&PhysicWorld>,
-        resources: &Resources,
-    ) {
+    pub fn render(&mut self, surface: &mut GlfwSurface, world: &World, resources: &Resources) {
         let assets = resources.fetch::<AssetManager>().unwrap();
         self.shaders.update();
 
@@ -247,16 +240,13 @@ impl Renderer {
                 );
 
                 if self.debug {
-                    if let Some(physics) = physics {
-                        self.debug_renderer.render(
-                            &self.projection,
-                            &self.view,
-                            &mut shd_gate,
-                            world,
-                            &self.shaders,
-                            physics,
-                        );
-                    }
+                    self.debug_renderer.render(
+                        &self.projection,
+                        &self.view,
+                        &mut shd_gate,
+                        world,
+                        &self.shaders,
+                    );
                 }
 
                 if should_render_player_ui {

@@ -2,6 +2,7 @@
 
 use crate::camera::Camera;
 use crate::ecs::Transform;
+use crate::gameplay::player::MainPlayer;
 use crate::net::snapshot::Deltable;
 use crate::render::assets::SpriteCache;
 use crate::render::shaders::Shaders;
@@ -49,6 +50,7 @@ pub struct ShaderInterface {
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Default)]
 pub struct Billboard {
     pub texture: String,
+    pub enabled: bool,
     pub sprite_nb: usize,
 }
 
@@ -70,6 +72,7 @@ impl Deltable for Billboard {
     fn apply_delta(&mut self, delta: &Self::Delta) {
         self.texture = delta.texture.clone();
         self.sprite_nb = delta.sprite_nb;
+        self.enabled = delta.enabled;
     }
 
     fn new_component(delta: &Self::Delta) -> Self {
@@ -123,8 +126,16 @@ impl BillboardRenderer {
                 iface.projection.update(projection.to_cols_array_2d());
                 iface.view.update(view.to_cols_array_2d());
                 iface.camera_position.update(camera_position.into());
-                for (_, (transform, billboard)) in world.query::<(&Transform, &Billboard)>().iter()
+                for (e, (transform, billboard)) in world.query::<(&Transform, &Billboard)>().iter()
                 {
+                    if world.get::<MainPlayer>(e).is_ok() {
+                        continue;
+                    }
+
+                    if !billboard.enabled {
+                        continue;
+                    }
+
                     let assets = sprite_cache.get(&billboard.texture).unwrap();
                     let texture = pipeline.bind_texture(&assets.0);
                     let metadata = &assets.1;

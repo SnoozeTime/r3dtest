@@ -53,5 +53,5 @@ void main() {
     //
     mat4 rotation = rotationY(theta);
 
-    gl_Position = projection * view * rotation * model * vec4(p, 1.0, 1.0);
+    gl_Position = projection * view *  model * rotation * vec4(p, 1.0, 1.0);
 }

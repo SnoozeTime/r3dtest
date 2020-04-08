@@ -12,6 +12,7 @@ use r3dtest::gameplay::health::HealthSystem;
 use r3dtest::gameplay::player::PlayerSystem;
 use r3dtest::net::server::NetworkSystem;
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
+use r3dtest::render::debug::update_debug_components;
 use r3dtest::{ecs, ecs::Transform, event::GameEvent, physics::RigidBody, resources::Resources};
 use shrev::EventChannel;
 use std::net::SocketAddr;
@@ -109,6 +110,7 @@ fn main() {
         // Update health if somebody has been SHOT.
         health_system.update(&world, &resources);
         player_system.update(dt, &mut world, &resources);
+        update_debug_components(&mut world, &physics);
 
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);

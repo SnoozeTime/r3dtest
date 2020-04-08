@@ -1,13 +1,14 @@
 #![allow(unused)]
 use super::Transform;
 use crate::animation::AnimationController;
-use crate::camera::Camera;
+use crate::camera::{Camera, LookAt};
 use crate::colors::RgbColor;
 use crate::controller::Fps;
-use crate::gameplay::health::Health;
+use crate::gameplay::{health::Health, player::Player};
 use crate::physics::RigidBody;
 use crate::render::{
     billboard::Billboard,
+    debug::DebugRender,
     sprite::{ScreenPosition, SpriteRender},
     Render,
 };
@@ -128,5 +129,8 @@ serialize! {
     (sprite, SpriteRender),
     (screen_position, ScreenPosition),
     (animation, AnimationController),
-    (billboard, Billboard)
+    (billboard, Billboard),
+    (look_at, LookAt),
+    (debug_render, DebugRender),
+    (player, Player)
 }

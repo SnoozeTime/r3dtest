@@ -1,5 +1,6 @@
 //! Bounding volumes are AABB (axis-aligned).
 use glam::Vec3;
+use serde_derive::{Deserialize, Serialize};
 use std::mem::swap;
 
 const EPSILON: f32 = 0.0001;
@@ -19,7 +20,7 @@ impl Ray {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Aabb {
     /// Center of the AABB
     pub center: Vec3,

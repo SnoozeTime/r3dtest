@@ -1,4 +1,5 @@
 use crate::ecs::Transform;
+use crate::net::snapshot::Deltable;
 use serde_derive::{Deserialize, Serialize};
 
 pub fn get_view(world: &hecs::World) -> Option<glam::Mat4> {
@@ -18,6 +19,39 @@ pub struct Camera {
     pub yaw: f32,
     pub front: glam::Vec3,
     pub left: glam::Vec3,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct LookAt(pub glam::Vec3);
+
+impl Default for LookAt {
+    fn default() -> Self {
+        Self(glam::Vec3::zero())
+    }
+}
+
+impl Deltable for LookAt {
+    type Delta = LookAt;
+
+    fn compute_delta(&self, old: &Self) -> Option<Self::Delta> {
+        if self != old {
+            Some(*self)
+        } else {
+            None
+        }
+    }
+
+    fn compute_complete(&self) -> Option<Self::Delta> {
+        Some(*self)
+    }
+
+    fn apply_delta(&mut self, delta: &Self::Delta) {
+        self.0 = delta.0;
+    }
+
+    fn new_component(delta: &Self::Delta) -> Self {
+        Self(delta.0)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

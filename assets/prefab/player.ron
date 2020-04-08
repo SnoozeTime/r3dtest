@@ -1,0 +1,56 @@
+(
+    transform: Some((
+        translation: (0, 15, -5),
+        scale: (0.53, 1, 1),
+        rotation: (0, 0, 0, 1),
+    )),
+    billboard: Some((
+        sprite_nb: 0,
+        enabled: false,
+        texture: "soldier",
+    )),
+    animation: Some((
+        animations: {
+            "walk_backward": (
+                keyframes: [(0, 10), (1, 10), (2, 10), (3, 10)],
+                single: false,
+                current_index: 0,
+                elapsed_frame: 0
+            ),
+            "walk_forward": (
+                keyframes: [(4, 10), (5, 10), (6, 10), (7, 10)],
+                single: false,
+                current_index: 0,
+                elapsed_frame: 0
+            )
+        },
+        current_animation: Some("walk_forward")
+    )),
+    player: Some((
+        nb: 0,
+        state: Respawn(3.0),
+    )),
+    camera: Some((
+        active: true,
+        pitch: 0,
+        yaw: 0,
+        front: (1, 0, 0),
+        left: (0, 0, -1),
+    )),
+    rigid_body: Some((
+        mass: 1,
+        shape: AABB((0.5, 1.1, 0.5)),
+        ty: Dynamic,
+    )),
+    fps: Some((
+        on_ground: false,
+        jumping: true,
+        sensitivity: 0.005,
+        speed: 1.5,
+        air_speed: 0.1,
+    )),
+    health: Some((
+        max: 10,
+        current: 10
+    )),
+)

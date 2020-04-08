@@ -5,24 +5,22 @@
 //!
 //! Also has the `spawn_player` function that will spawn an entity for the player (should be
 //! replaced by some configuration file at some point...)
-
-use crate::camera::Camera;
-use crate::colors;
-use crate::controller::Fps;
+use crate::camera::{Camera, LookAt};
 use crate::ecs::serialization;
+use crate::ecs::serialization::SerializedEntity;
 use crate::ecs::Transform;
-use crate::physics::Shape::AABB;
-use crate::physics::{BodyToEntity, BodyType, PhysicWorld, RigidBody};
-use crate::render::Render;
+use crate::physics::{BodyToEntity, PhysicWorld, RigidBody};
 use crate::resources::Resources;
 use hecs::{Entity, World};
 #[allow(unused_imports)]
 use log::{debug, info};
 use std::fs;
 
+use crate::animation::AnimationController;
 use crate::event::GameEvent;
 use crate::gameplay::health::Health;
 use crate::net::snapshot::Deltable;
+use crate::render::billboard::Billboard;
 use serde_derive::{Deserialize, Serialize};
 use shrev::{EventChannel, ReaderId};
 use std::time::Duration;
@@ -97,54 +95,93 @@ pub fn spawn_player(
     physics: &mut PhysicWorld,
     resources: &Resources,
 ) -> Entity {
-    let transform = Transform {
-        translation: glam::vec3(0.0, 15.0, -5.0),
-        scale: glam::Vec3::one(),
-        rotation: glam::Quat::identity(),
-    };
-    let mesh = Render {
-        mesh: "cube".to_string(),
-        enabled: false,
-    };
-    let color = colors::RED;
-    let cam = Camera::new(0., 0.);
-    let mut rb = RigidBody {
-        handle: None,
-        mass: 1.,
-        shape: AABB(glam::vec3(2.0, 2.0, 2.0)),
-        ty: BodyType::Dynamic,
-    };
-    let idx = physics.add_body(transform.translation, &mut rb);
-    let fps = Fps {
-        on_ground: false,
-        jumping: true,
-        sensitivity: 0.005,
-        speed: 1.5,
-    };
+    //    let transform = Transform {
+    //        translation: glam::vec3(0.0, 15.0, -5.0),
+    //        scale: glam::vec3(0.53, 1., 1.),
+    //        rotation: glam::Quat::identity(),
+    //    };
+    //
+    //    // player is a 2d sprite.
+    //    let billboard = Billboard {
+    //        sprite_nb: 0,
+    //        enabled: false,
+    //        texture: "soldier".to_string(),
+    //    };
+    //    let mut animations = HashMap::new();
+    //    animations.insert(
+    //        "walk_forward".to_string(),
+    //        Animation::new(vec![(4, 10), (5, 10), (6, 10), (7, 10)]),
+    //    );
+    //    animations.insert(
+    //        "walk_backward".to_string(),
+    //        Animation::new(vec![(0, 10), (1, 10), (2, 10), (3, 10)]),
+    //    );
+    //    let animation = AnimationController {
+    //        animations,
+    //        current_animation: Some("walk_forward".to_string()),
+    //    };
+    //
+    //    let cam = Camera::new(0., 0.);
+    //    let look_at = LookAt(cam.front);
+    //    let mut rb = RigidBody {
+    //        handle: None,
+    //        mass: 1.,
+    //        shape: AABB(glam::vec3(0.5, 1.1, 0.5)),
+    //        ty: BodyType::Dynamic,
+    //    };
+    //    let idx = physics.add_body(transform.translation, &mut rb);
+    //    let fps = Fps {
+    //        on_ground: false,
+    //        jumping: true,
+    //        sensitivity: 0.005,
+    //        speed: 1.5,
+    //    };
     // physics.set_friction(idx, 0.3);
 
     let mut body_to_entity = resources.fetch_mut::<BodyToEntity>().unwrap();
 
-    let player_health = Health {
-        max: 10.0,
-        current: 10.0,
-    };
+    //    let player_health = Health {
+    //        max: 10.0,
+    //        current: 10.0,
+    //    };
 
-    let e = world.spawn((
-        transform,
-        cam,
-        rb,
-        fps,
-        mesh,
-        color,
-        Player {
-            state: PlayerState::Respawn(2.0),
-            nb: 0,
-        },
-        player_health,
-    ));
+    //
+    let player_prefab = std::env::var("ASSET_PATH").unwrap() + "prefab/player.ron";
+
+    println!("Prefab file = {:?}", player_prefab);
+    let player_prefab = fs::read_to_string(player_prefab).unwrap();
+    let ser_entity: SerializedEntity = ron::de::from_str(&player_prefab).unwrap();
+    let e = crate::ecs::serialization::spawn_entity(world, &ser_entity);
+
+    let lookat = {
+        let cam = world.get::<Camera>(e).unwrap();
+        LookAt(cam.front)
+    };
+    let idx = {
+        let mut rb = world.get_mut::<RigidBody>(e).unwrap();
+        let transform = world.get::<Transform>(e).unwrap();
+        physics.add_body(transform.translation, &mut rb)
+    };
+    //
+    //    let e = world.spawn((
+    //        transform,
+    //        cam,
+    //        rb,
+    //        fps,
+    //        billboard,
+    //        animation,
+    //        look_at,
+    //        Player {
+    //            state: PlayerState::Respawn(2.0),
+    //            nb: 0,
+    //        },
+    //        player_health,
+    //    ));
 
     body_to_entity.insert(idx, e);
+
+    world.insert_one(e, lookat).unwrap();
+
     e
 }
 
@@ -183,8 +220,8 @@ impl PlayerSystem {
                     .get_mut::<Player>(*entity)
                     .expect("Player entity should have a player component");
                 let mut r = world
-                    .get_mut::<Render>(*entity)
-                    .expect("Player entity should have a render component");
+                    .get_mut::<Billboard>(*entity)
+                    .expect("Player entity should have a billboard component");
                 info!(
                     "Player system will change the player to Spawning: {:?} / {:?}",
                     *p, *r
@@ -220,14 +257,44 @@ impl PlayerSystem {
                 .get_mut::<Player>(player)
                 .expect("Player entity should have a player component");
             let mut r = world
-                .get_mut::<Render>(player)
-                .expect("Player entity should have a render component");
+                .get_mut::<Billboard>(player)
+                .expect("Player entity should have a billboard component");
 
             h.current = h.max;
             r.enabled = true;
             p.state = PlayerState::Alive;
 
             debug!("Player state now {:?} / {:?} / {:?}", *h, *r, *p);
+        }
+    }
+}
+
+/// This will change the players animations based on where the main player is. As it uses the main player
+/// component, this is *not* server side code.
+pub fn update_player_orientations(world: &mut World) {
+    if let Some((player_entity, main_player_position)) = world
+        .query::<(&Transform, &MainPlayer)>()
+        .iter()
+        .map(|(e, (t, _))| (e, t.translation))
+        .next()
+    {
+        // update animations :)
+        for (e, (_, t, c, a)) in world
+            .query::<(&Player, &Transform, &LookAt, &mut AnimationController)>()
+            .iter()
+        {
+            if e == player_entity {
+                continue;
+            }
+
+            // If the player is not looking in the direction of the main player, display his back.
+            let dir = main_player_position - t.translation;
+            let dot = c.0.dot(dir);
+            if dot < 0.0 {
+                a.current_animation = Some("walk_backward".to_owned());
+            } else {
+                a.current_animation = Some("walk_forward".to_owned());
+            }
         }
     }
 }

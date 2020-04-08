@@ -7,7 +7,9 @@
 //
 // For example, if the object has moved a bit, send the delta. If the mesh has morphed, send it as
 // well.
+use crate::animation::AnimationController;
 use crate::camera::Camera;
+use crate::camera::LookAt;
 use crate::collections::ring_buffer::RingBuffer;
 use crate::colors::RgbColor;
 use crate::controller::Fps;
@@ -15,6 +17,7 @@ use crate::ecs::Transform;
 use crate::event::GameEvent;
 use crate::gameplay::health::Health;
 use crate::gameplay::player::{MainPlayer, Player};
+use crate::render::debug::DebugRender;
 use crate::render::{billboard::Billboard, Render};
 use crate::resources::Resources;
 use hecs::{Entity, EntityBuilder, World};
@@ -134,6 +137,11 @@ macro_rules! snapshot {
                 for deltas in snapshot.deltas {
                     trace!("delta in snapshot = {:?}", deltas);
                     if let Some(e) = self.server_to_local_entity.get(&deltas.entity) {
+
+
+                        if deltas.delta_animation.is_some() {
+                            println!("DELTA ANIMATION = {:?}", deltas.delta_animation);
+                        }
                         let mut builder = EntityBuilder::new();
                         $(
                             apply_delta::<$component>(world, *e, deltas.$name, &mut builder);
@@ -153,6 +161,7 @@ macro_rules! snapshot {
                                 new_health: world.get::<Health>(*e).unwrap().current,
                             })
                         }
+
                     } else {
                         // TODO Add new entity.
                         let mut builder = EntityBuilder::new();
@@ -166,11 +175,13 @@ macro_rules! snapshot {
 
                             let cam = Camera::new(0., 0.);
                             builder.add(cam);
+                            // TODO maybe send as state instead
                             let fps = Fps {
                                 on_ground: false,
                                 jumping: false,
                                 sensitivity: 0.005,
                                 speed: 1.5,
+                                air_speed: 0.1,
                             };
                             builder.add(fps);
                             builder.add(MainPlayer);
@@ -226,7 +237,10 @@ snapshot! {
     (delta_color, RgbColor),
     (delta_player, Player),
     (delta_health, Health),
-    (delta_billboard, Billboard)
+    (delta_billboard, Billboard),
+    (delta_animation, AnimationController),
+    (delta_lookat, LookAt),
+    (delta_debug, DebugRender)
 }
 
 /// Apply the latest server state to the client state.

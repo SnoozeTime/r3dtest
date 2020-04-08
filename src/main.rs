@@ -14,10 +14,13 @@ use r3dtest::controller::{client, Controller};
 use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::health::HealthSystem;
-use r3dtest::gameplay::player::{spawn_player, MainPlayer, PlayerSystem};
+use r3dtest::gameplay::player::{
+    spawn_player, update_player_orientations, MainPlayer, PlayerSystem,
+};
 use r3dtest::gameplay::ui::UiSystem;
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
 use r3dtest::render::assets::AssetManager;
+use r3dtest::render::debug::update_debug_components;
 use r3dtest::render::Renderer;
 use r3dtest::{
     ecs, ecs::Transform, event::GameEvent, input::Input, physics::RigidBody, resources::Resources,
@@ -91,7 +94,7 @@ fn main_loop(mut surface: GlfwSurface) {
     resources.insert(asset_manager);
 
     let player_entity = spawn_player(&mut world, &mut physics, &resources);
-    world.insert(player_entity, (MainPlayer,)).unwrap();
+    world.insert_one(player_entity, MainPlayer).unwrap();
 
     let mut garbage_collector = GarbageCollector::new(&mut resources);
     let mut health_system = HealthSystem::new(&mut resources);
@@ -148,11 +151,13 @@ fn main_loop(mut surface: GlfwSurface) {
         ui_system.update(&mut world, &mut resources);
         player_system.update(dt, &mut world, &resources);
         animation_system.animate(&mut world);
+        update_player_orientations(&mut world);
+        update_debug_components(&mut world, &physics);
 
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------
-        renderer.render(&mut surface, &world, Some(&physics), &resources);
+        renderer.render(&mut surface, &world, &resources);
 
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);

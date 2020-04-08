@@ -28,6 +28,7 @@ pub enum BodyType {
 struct PhysicConfig {
     grav: f32,
     friction: f32,
+    max_speed: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -146,25 +147,22 @@ impl PhysicWorld {
                     let next_pos = body.position + self.step_dt * body.velocity;
                     debug!("vel = {:?}", body.velocity);
 
+                    // Let's make the friction effect only on x and z axis (gravity not affected)
+                    let mut horizontal_friction = body.velocity * body.friction;
+                    horizontal_friction.set_y(0.);
+
                     let next_vel = body.velocity
                         + self.step_dt * glam::vec3(0.0, -self.conf.grav, 0.0)
-                        - body.friction * body.velocity;
-                    if body.velocity_change != Vec3::zero() {
-                        info!("Velocity before change = {:?}", next_vel);
-                        info!("CHANGE IS {:?}", body.velocity_change);
-                    }
+                        - horizontal_friction;
 
                     let next_vel = next_vel + body.velocity_change;
-                    if body.velocity_change != Vec3::zero() {
-                        info!("Velocity after change = {:?}", next_vel);
-                    }
                     debug!("Next vel = {:?}", next_vel);
                     body.velocity = next_vel;
                     body.velocity_change = Vec3::zero();
 
                     // MAX SPEED.
-                    if body.velocity.length() > 10.0 {
-                        body.velocity = body.velocity.normalize() * 10.0;
+                    if body.velocity.length() > self.conf.max_speed {
+                        body.velocity = body.velocity.normalize() * self.conf.max_speed;
                     }
                     trace!("Next vel = {:?}", next_vel);
 
@@ -346,6 +344,14 @@ impl PhysicWorld {
     pub fn get_collider_type(&self, h: BodyIndex) -> Option<BodyType> {
         if let Some(Some(current_state)) = self.current_state.get(h) {
             Some(current_state.ty)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_shape(&self, h: BodyIndex) -> Option<Shape> {
+        if let Some(Some(current_state)) = self.current_state.get(h) {
+            Some(current_state.shape)
         } else {
             None
         }

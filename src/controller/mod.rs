@@ -1,4 +1,4 @@
-use crate::camera::Camera;
+use crate::camera::{Camera, LookAt};
 use crate::controller::client::ClientCommand;
 use crate::event::{Event, GameEvent};
 use crate::gameplay::player::{Player, PlayerState};
@@ -15,6 +15,7 @@ pub mod client;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Fps {
     pub speed: f32,
+    pub air_speed: f32,
     pub sensitivity: f32,
 
     #[serde(skip)]
@@ -22,6 +23,16 @@ pub struct Fps {
 
     #[serde(skip)]
     pub on_ground: bool,
+}
+
+impl Fps {
+    pub fn get_speed(&self) -> f32 {
+        if self.on_ground {
+            self.speed
+        } else {
+            self.air_speed
+        }
+    }
 }
 
 pub fn apply_inputs(
@@ -63,15 +74,19 @@ fn apply_cmd(
     match cmd {
         ClientCommand::LookAt(pitch, yaw) => {
             let mut camera = world.get_mut::<Camera>(e).unwrap();
+            let mut lookat = world.get_mut::<LookAt>(e).unwrap();
             camera.pitch = pitch;
             camera.yaw = yaw;
             camera.compute_vectors();
+            lookat.0 = camera.front;
         }
         ClientCommand::Move(dir) => {
             let rb = world.get::<RigidBody>(e).unwrap();
             let fps = world.get::<Fps>(e).unwrap();
             let h = rb.handle.unwrap();
-            physics.add_velocity_change(h, dir.normalize() * fps.speed);
+
+            let speed = fps.get_speed();
+            physics.add_velocity_change(h, dir.normalize() * speed);
         }
         ClientCommand::Jump => {
             let rb = world.get::<RigidBody>(e).unwrap();
@@ -79,7 +94,8 @@ fn apply_cmd(
 
             if fps.on_ground {
                 info!("JUMP");
-                physics.add_velocity_change(rb.handle.unwrap(), 20.0 * glam::Vec3::unit_y());
+                // 10.0 for hiiiiiigh jump
+                physics.add_velocity_change(rb.handle.unwrap(), 1.5 * glam::Vec3::unit_y());
                 fps.jumping = true;
                 physics.set_friction(rb.handle.unwrap(), 0.0);
             }
@@ -141,7 +157,7 @@ impl Controller {
 
                 debug!("Raycast on_ground = {:?}", d);
                 if let Some((minimum_distance, _)) = d.pop() {
-                    if minimum_distance < 2.5 {
+                    if minimum_distance < 1.5 {
                         true
                     } else {
                         false
