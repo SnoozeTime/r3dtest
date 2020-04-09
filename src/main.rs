@@ -13,6 +13,7 @@ use r3dtest::animation::AnimationSystem;
 use r3dtest::controller::{client, Controller};
 use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
+use r3dtest::gameplay::gun::GunSystem;
 use r3dtest::gameplay::health::HealthSystem;
 use r3dtest::gameplay::player::{
     spawn_player, update_player_orientations, MainPlayer, PlayerSystem,
@@ -76,7 +77,7 @@ fn main_loop(mut surface: GlfwSurface) {
     let world_str = fs::read_to_string(&format!(
         "{}{}",
         std::env::var("ASSET_PATH").unwrap(),
-        "world/lol.ron"
+        "world/bonjour.ron"
     ))
     .unwrap();
     let mut world = ecs::serialization::deserialize_world(world_str).unwrap();
@@ -103,10 +104,12 @@ fn main_loop(mut surface: GlfwSurface) {
     let mut ui_system = UiSystem::new(&mut world, &mut resources);
     let mut player_system = PlayerSystem::new(&mut resources);
     let mut animation_system = AnimationSystem;
+    let gun_system = GunSystem;
 
     let dt = Duration::from_millis(16);
 
     let mut current_time = Instant::now();
+    let client_controller = client::ClientController::get_offline_controller();
 
     'app: loop {
         {
@@ -120,7 +123,8 @@ fn main_loop(mut surface: GlfwSurface) {
             }
         }
 
-        let cmds = client::process_input(&mut world, &mut resources)
+        let cmds = client_controller
+            .process_input(&mut world, &mut resources)
             .drain(..)
             .map(|ev| (player_entity, Event::Client(ev)))
             .collect();
@@ -153,6 +157,7 @@ fn main_loop(mut surface: GlfwSurface) {
         animation_system.animate(&mut world);
         update_player_orientations(&mut world);
         update_debug_components(&mut world, &physics);
+        gun_system.update(&mut world, dt);
 
         // ----------------------------------------------------
         // RENDERING

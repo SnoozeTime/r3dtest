@@ -15,6 +15,7 @@ use crate::colors::RgbColor;
 use crate::controller::Fps;
 use crate::ecs::Transform;
 use crate::event::GameEvent;
+use crate::gameplay::gun::{Gun, GunInventory};
 use crate::gameplay::health::Health;
 use crate::gameplay::player::{MainPlayer, Player};
 use crate::render::debug::DebugRender;
@@ -154,12 +155,24 @@ macro_rules! snapshot {
                             .expect("Entity does not exist...");
 
                         // mmmmh
-                        if deltas.delta_health.is_some() {
-                            println!("DELTA HEALTH");
-                            chan.single_write(GameEvent::HealthUpdate {
-                                entity: *e,
-                                new_health: world.get::<Health>(*e).unwrap().current,
-                            })
+                        if snapshot.player_entity == deltas.entity {
+
+                            if deltas.delta_health.is_some() {
+                                println!("DELTA HEALTH");
+                                chan.single_write(GameEvent::HealthUpdate {
+                                    entity: *e,
+                                    new_health: world.get::<Health>(*e).unwrap().current,
+                                })
+                            }
+
+                            if let Some((delta_guntype, delta_ammo, _)) = deltas.delta_gun {
+                                if delta_guntype.is_some() {
+                                    chan.single_write(GameEvent::GunChanged);
+
+                                } else if delta_ammo.is_some() {
+                                    chan.single_write(GameEvent::AmmoChanged);
+                                }
+                            }
                         }
 
                     } else {
@@ -240,7 +253,9 @@ snapshot! {
     (delta_billboard, Billboard),
     (delta_animation, AnimationController),
     (delta_lookat, LookAt),
-    (delta_debug, DebugRender)
+    (delta_debug, DebugRender),
+    (delta_gun, Gun),
+    (delta_gun_inventory, GunInventory)
 }
 
 /// Apply the latest server state to the client state.

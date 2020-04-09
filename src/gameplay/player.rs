@@ -18,6 +18,7 @@ use std::fs;
 
 use crate::animation::AnimationController;
 use crate::event::GameEvent;
+use crate::gameplay::gun::GunInventory;
 use crate::gameplay::health::Health;
 use crate::net::snapshot::Deltable;
 use crate::render::billboard::Billboard;
@@ -162,6 +163,14 @@ pub fn spawn_player(
         let transform = world.get::<Transform>(e).unwrap();
         physics.add_body(transform.translation, &mut rb)
     };
+    let current_gun = {
+        let inventory = world
+            .get::<GunInventory>(e)
+            .expect("Player should have a gun inventory");
+        inventory
+            .get_first()
+            .expect("Inventory should have at least one gun")
+    };
     //
     //    let e = world.spawn((
     //        transform,
@@ -180,7 +189,7 @@ pub fn spawn_player(
 
     body_to_entity.insert(idx, e);
 
-    world.insert_one(e, lookat).unwrap();
+    world.insert(e, (lookat, current_gun)).unwrap();
 
     e
 }

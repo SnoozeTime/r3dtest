@@ -130,7 +130,7 @@ fn main_loop(mut surface: GlfwSurface) {
     let asset_manager = AssetManager::new(&mut surface);
     resources.insert(asset_manager);
     let mut animation_system = AnimationSystem;
-
+    let controller = client::ClientController::get_net_controller();
     'app: loop {
         {
             let mut input = resources.fetch_mut::<Input>().unwrap();
@@ -139,7 +139,7 @@ fn main_loop(mut surface: GlfwSurface) {
                 break 'app;
             }
         }
-        let cmds = client::process_input(&mut world, &mut resources);
+        let cmds = controller.process_input(&mut world, &mut resources);
         backend.send_commands(&cmds);
 
         // State from the server - will update all positions and so on...

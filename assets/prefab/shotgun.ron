@@ -1,0 +1,23 @@
+(
+    screen_position: Some((
+        x: 0.75,
+        y: 0.15,
+        w: 0.2,
+        h: 0.2,
+    )),
+    sprite: Some((
+         texture: "shotgun",
+         sprite_nb: 1,
+    )),
+    animation: Some((
+        animations: {
+            "shoot": (
+                keyframes: [(0, 2), (1, 0)],
+                single: true,
+                current_index: 0,
+                elapsed_frame: 0
+            )
+        },
+        current_animation: None
+    ))
+ )

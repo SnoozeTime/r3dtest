@@ -34,6 +34,10 @@ impl AssetManager {
             surface,
             std::env::var("ASSET_PATH").unwrap() + "sprites/shotgun.png",
         );
+        let pistol_tex = load_texture(
+            surface,
+            std::env::var("ASSET_PATH").unwrap() + "sprites/pistol.png",
+        );
         let soldier_tex = load_texture(
             surface,
             std::env::var("ASSET_PATH").unwrap() + "sprites/soldier.png",
@@ -42,6 +46,7 @@ impl AssetManager {
         sprites.insert("crosshair".to_string(), crosshair);
         sprites.insert("shotgun".to_string(), shotgun_tex);
         sprites.insert("soldier".to_string(), soldier_tex);
+        sprites.insert("pistol".to_string(), pistol_tex);
 
         let meshes = load_models(
             surface,

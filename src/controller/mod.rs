@@ -1,12 +1,13 @@
 use crate::camera::{Camera, LookAt};
 use crate::controller::client::ClientCommand;
 use crate::event::{Event, GameEvent};
+use crate::gameplay::gun::{Gun, GunInventory};
 use crate::gameplay::player::{Player, PlayerState};
 use crate::physics::{BodyIndex, BodyToEntity, PhysicWorld, RigidBody};
 use crate::resources::Resources;
 use hecs::Entity;
 #[allow(unused_imports)]
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
 use serde_derive::{Deserialize, Serialize};
 use shrev::EventChannel;
 
@@ -103,20 +104,43 @@ fn apply_cmd(
         ClientCommand::Shoot => {
             let camera = world.get::<Camera>(e).unwrap();
             let rb = world.get::<RigidBody>(e).unwrap();
-            let h = rb.handle.unwrap();
-            debug!("CAMERA IS {:?}", *camera);
-            debug!(
-                "Will raycast from {:?} direction {:?}",
-                physics.get_pos(h),
-                camera.front
-            );
+            if let Ok(mut gun) = world.get_mut::<Gun>(e) {
+                if gun.can_shoot() {
+                    gun.shoot();
+                    let h = rb.handle.unwrap();
+                    debug!("CAMERA IS {:?}", *camera);
+                    debug!(
+                        "Will raycast from {:?} direction {:?}",
+                        physics.get_pos(h),
+                        camera.front
+                    );
 
-            let mut d = physics.raycast(h, glam::vec3(0.0, 0.0, 0.0), camera.front);
-            debug!("{:?}", d);
-            d.sort_by(|(toi, _), (toi_o, _)| toi.partial_cmp(toi_o).unwrap());
-            if let Some(ev) = create_shot_event(d, resources) {
-                let mut event_channel = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
-                event_channel.single_write(ev);
+                    let mut d = physics.raycast(h, glam::vec3(0.0, 0.0, 0.0), camera.front);
+                    debug!("{:?}", d);
+                    d.sort_by(|(toi, _), (toi_o, _)| toi.partial_cmp(toi_o).unwrap());
+                    if let Some(ev) = create_shot_event(d, resources) {
+                        let mut event_channel =
+                            resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
+                        event_channel.single_write(ev);
+                    }
+                }
+            } else {
+                error!("Cannot shoot without a gun");
+            }
+        }
+        ClientCommand::ChangeGun(gun_slot) => {
+            match (world.get_mut::<GunInventory>(e), world.get_mut::<Gun>(e)) {
+                (Ok(mut inventory), Ok(mut gun)) => {
+                    if let Some(new_gun) = inventory.switch_gun(*gun, gun_slot) {
+                        info!("Will change to gun slot {}", gun_slot);
+
+                        *gun = new_gun;
+                        let mut event_channel =
+                            resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
+                        event_channel.single_write(GameEvent::GunChanged);
+                    }
+                }
+                _ => (),
             }
         }
     }

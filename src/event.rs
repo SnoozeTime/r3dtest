@@ -30,4 +30,8 @@ pub enum GameEvent {
     PlayerDead {
         entity: Entity,
     },
+
+    /// The main player changed its gun. need to update UI and so on.
+    GunChanged,
+    AmmoChanged,
 }

@@ -8,6 +8,7 @@ use std::fs;
 
 use r3dtest::controller::Controller;
 use r3dtest::gameplay::delete::GarbageCollector;
+use r3dtest::gameplay::gun::GunSystem;
 use r3dtest::gameplay::health::HealthSystem;
 use r3dtest::gameplay::player::PlayerSystem;
 use r3dtest::net::server::NetworkSystem;
@@ -81,7 +82,7 @@ fn main() {
     .unwrap();
 
     let mut player_system = PlayerSystem::new(&mut resources);
-
+    let gun_system = GunSystem;
     'app: loop {
         let client_events = backend.poll_events(&mut world, &mut physics, &resources);
         controller.apply_inputs(client_events, &mut world, &mut physics, &resources);
@@ -111,7 +112,7 @@ fn main() {
         health_system.update(&world, &resources);
         player_system.update(dt, &mut world, &resources);
         update_debug_components(&mut world, &physics);
-
+        gun_system.update(&mut world, dt);
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);
 
