@@ -15,6 +15,7 @@ use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::gun::GunSystem;
 use r3dtest::gameplay::health::HealthSystem;
+use r3dtest::gameplay::pickup::PickUpSystem;
 use r3dtest::gameplay::player::{
     spawn_player, update_player_orientations, MainPlayer, PlayerSystem,
 };
@@ -39,6 +40,7 @@ fn main() {
     dotenv::dotenv().ok().unwrap();
     pretty_env_logger::init();
 
+    let map_name: String = std::env::args().nth(1).unwrap_or("lol.ron".to_string());
     let window_config =
         fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + "config.ron").unwrap();
     let conf: WindowConfig = ron::de::from_str(&window_config).unwrap();
@@ -51,7 +53,7 @@ fn main() {
     match surface {
         Ok(surface) => {
             debug!("Will enter main loop");
-            main_loop(surface);
+            main_loop(surface, map_name);
         }
         Err(e) => {
             error!("Cannot create graphic surface: {}", e);
@@ -70,14 +72,14 @@ fn setup_resources() -> Resources {
     resources
 }
 
-fn main_loop(mut surface: GlfwSurface) {
+fn main_loop(mut surface: GlfwSurface, map_name: String) {
     let mut physics = PhysicWorld::default();
 
     // SETUP WORLD.
     let world_str = fs::read_to_string(&format!(
-        "{}{}",
+        "{}world/{}",
         std::env::var("ASSET_PATH").unwrap(),
-        "world/bonjour.ron"
+        map_name
     ))
     .unwrap();
     let mut world = ecs::serialization::deserialize_world(world_str).unwrap();
@@ -104,7 +106,8 @@ fn main_loop(mut surface: GlfwSurface) {
     let mut ui_system = UiSystem::new(&mut world, &mut resources);
     let mut player_system = PlayerSystem::new(&mut resources);
     let mut animation_system = AnimationSystem;
-    let gun_system = GunSystem;
+    let pickup_system = PickUpSystem;
+    let mut gun_system = GunSystem::new(&mut resources);
 
     let dt = Duration::from_millis(16);
 
@@ -157,8 +160,8 @@ fn main_loop(mut surface: GlfwSurface) {
         animation_system.animate(&mut world);
         update_player_orientations(&mut world);
         update_debug_components(&mut world, &physics);
-        gun_system.update(&mut world, dt);
-
+        gun_system.update(&mut world, dt, &mut resources);
+        pickup_system.update(&world, &physics, &mut resources);
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------

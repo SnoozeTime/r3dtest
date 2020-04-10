@@ -64,13 +64,18 @@ impl UiSystem {
                         should_update = true;
                     }
                 }
-                GameEvent::Shoot | GameEvent::AmmoChanged => {
+                GameEvent::Shoot => {
                     if let Some(weapon_entity) = self.weapon_entity {
                         let mut animation =
                             world.get_mut::<AnimationController>(weapon_entity).unwrap();
                         animation.current_animation = Some("shoot".to_string());
                     }
 
+                    if self.update_ammo(world) {
+                        should_update = true;
+                    }
+                }
+                GameEvent::AmmoChanged => {
                     if self.update_ammo(world) {
                         should_update = true;
                     }
@@ -99,6 +104,7 @@ impl UiSystem {
         if let Some(weapon_entity) = self.weapon_entity {
             if let Some((_, (g, _))) = world.query::<(&Gun, &MainPlayer)>().iter().next() {
                 let mut text = world.get_mut::<Text>(self.ammo_entity).unwrap();
+                println!("AMMO IS {}", g.ammo);
                 text.content = format!("{}", g.ammo);
                 should_update = true;
             }

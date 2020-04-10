@@ -4,7 +4,9 @@ use crate::animation::AnimationController;
 use crate::camera::{Camera, LookAt};
 use crate::colors::RgbColor;
 use crate::controller::Fps;
-use crate::gameplay::{gun::Gun, gun::GunInventory, health::Health, player::Player};
+use crate::gameplay::{
+    gun::Gun, gun::GunInventory, health::Health, pickup::PickUp, player::Player,
+};
 use crate::physics::RigidBody;
 use crate::render::{
     billboard::Billboard,
@@ -134,5 +136,6 @@ serialize! {
     (debug_render, DebugRender),
     (player, Player),
     (gun, Gun),
-    (gun_inventory, GunInventory)
+    (gun_inventory, GunInventory),
+    (pickup, PickUp)
 }

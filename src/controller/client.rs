@@ -91,7 +91,7 @@ impl ClientController {
                 }
 
                 if input.has_mouse_event_happened(MouseButton::Button1, Action::Press) {
-                    if let Ok(mut gun) = world.get_mut::<Gun>(e) {
+                    if let Ok(gun) = world.get_mut::<Gun>(e) {
                         if gun.can_shoot() {
                             if self.net {
                                 // in the case of remote client, we will decrease the ammo right now before validation from server

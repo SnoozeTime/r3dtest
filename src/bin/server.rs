@@ -10,6 +10,7 @@ use r3dtest::controller::Controller;
 use r3dtest::gameplay::delete::GarbageCollector;
 use r3dtest::gameplay::gun::GunSystem;
 use r3dtest::gameplay::health::HealthSystem;
+use r3dtest::gameplay::pickup::PickUpSystem;
 use r3dtest::gameplay::player::PlayerSystem;
 use r3dtest::net::server::NetworkSystem;
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
@@ -82,7 +83,8 @@ fn main() {
     .unwrap();
 
     let mut player_system = PlayerSystem::new(&mut resources);
-    let gun_system = GunSystem;
+    let mut gun_system = GunSystem::new(&mut resources);
+    let pickup_system = PickUpSystem;
     'app: loop {
         let client_events = backend.poll_events(&mut world, &mut physics, &resources);
         controller.apply_inputs(client_events, &mut world, &mut physics, &resources);
@@ -112,7 +114,8 @@ fn main() {
         health_system.update(&world, &resources);
         player_system.update(dt, &mut world, &resources);
         update_debug_components(&mut world, &physics);
-        gun_system.update(&mut world, dt);
+        pickup_system.update(&world, &physics, &mut resources);
+        gun_system.update(&mut world, dt, &mut resources);
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);
 

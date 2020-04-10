@@ -6,11 +6,15 @@
 //!
 //! When the player switches gun, the current gun's ammo will be saved in the inventory.
 
+use crate::event::GameEvent;
+use crate::gameplay::player::MainPlayer;
 use crate::net::snapshot::Deltable;
+use crate::resources::Resources;
 use hecs::World;
 use log::info;
 use serde_derive::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use shrev::{EventChannel, ReaderId};
+use std::collections::HashMap;
 use std::time::Duration;
 
 /// Current gun. Will have the ammos, the weapon type and the amount of time to wait before the
@@ -122,6 +126,13 @@ impl GunType {
         }
     }
 
+    pub fn get_ammo_pickup(self) -> i32 {
+        match self {
+            GunType::Pistol => 10,
+            GunType::Shotgun => 4,
+        }
+    }
+
     pub fn get_gun_slot(self) -> GunSlot {
         match self {
             GunType::Pistol => 1,
@@ -201,16 +212,77 @@ impl GunInventory {
             None
         }
     }
+
+    pub fn has_gun(&self, gun: GunType) -> bool {
+        self.guns.contains_key(&gun.get_gun_slot())
+    }
 }
 
 /// Will update the countdown of guns
-pub struct GunSystem;
+pub struct GunSystem {
+    rdr_id: ReaderId<GameEvent>,
+}
 
 impl GunSystem {
-    pub fn update(&self, world: &mut World, dt: Duration) {
+    pub fn new(resources: &mut Resources) -> Self {
+        let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
+        Self {
+            rdr_id: chan.register_reader(),
+        }
+    }
+    pub fn update(&mut self, world: &mut World, dt: Duration, resources: &mut Resources) {
         let as_secs = dt.as_secs_f32();
         for (_, g) in world.query::<&mut Gun>().iter() {
             g.countdown = 0.0f32.max(g.countdown - as_secs);
         }
+
+        // If there is any pick up event :)
+        let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
+        let mut to_send = vec![];
+        for ev in chan.read(&mut self.rdr_id) {
+            match ev {
+                GameEvent::PickupAmmo { entity, gun } => {
+                    info!("Got pickup ammo event");
+                    let mut inventory = world
+                        .get_mut::<GunInventory>(*entity)
+                        .expect("Entity should have inventory");
+                    let mut current_gun = world
+                        .get_mut::<Gun>(*entity)
+                        .expect("Player should have gun.");
+                    if let Some(g) = inventory.get_gun_mut(gun.get_gun_slot()) {
+                        g.ammo += gun.get_ammo_pickup();
+                        if current_gun.gun_type == *gun {
+                            current_gun.ammo += gun.get_ammo_pickup();
+                        }
+                        info!("New gun ammo is {}", g.ammo);
+                        if world.get::<MainPlayer>(*entity).is_ok() {
+                            to_send.push(GameEvent::AmmoChanged);
+                        }
+                    }
+                }
+                GameEvent::PickupGun { entity, gun } => {
+                    let mut inventory = world
+                        .get_mut::<GunInventory>(*entity)
+                        .expect("Entity should have inventory");
+                    if let Some(g) = inventory.get_gun_mut(gun.get_gun_slot()) {
+                        g.ammo += gun.get_ammo_pickup();
+                    } else {
+                        inventory.guns.insert(
+                            gun.get_gun_slot(),
+                            Gun {
+                                ammo: gun.get_max_ammo(),
+                                countdown: 0.0,
+                                gun_type: *gun,
+                            },
+                        );
+                    }
+                    if world.get::<MainPlayer>(*entity).is_ok() {
+                        to_send.push(GameEvent::GunChanged);
+                    }
+                }
+                _ => (),
+            }
+        }
+        chan.drain_vec_write(&mut to_send);
     }
 }

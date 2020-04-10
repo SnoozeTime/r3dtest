@@ -54,11 +54,7 @@
         current: 10
     )),
     gun_inventory: Some((
-        guns: { 0: (
-            gun_type: Shotgun,
-            ammo: 15,
-            countdown: 0
-            ),
+        guns: {
             1: (
                 gun_type: Pistol,
                 ammo: 50,

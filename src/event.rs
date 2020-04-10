@@ -1,4 +1,5 @@
 use crate::controller::client::ClientCommand;
+use crate::gameplay::gun::GunType;
 use hecs::Entity;
 
 #[derive(Debug)]
@@ -34,4 +35,18 @@ pub enum GameEvent {
     /// The main player changed its gun. need to update UI and so on.
     GunChanged,
     AmmoChanged,
+
+    // Pickup events.
+    PickupAmmo {
+        entity: Entity,
+        gun: GunType,
+    },
+    PickupGun {
+        entity: Entity,
+        gun: GunType,
+    },
+    PickupHealth {
+        entity: Entity,
+        health: i32,
+    },
 }

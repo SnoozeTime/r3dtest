@@ -24,6 +24,51 @@
             max: 2,
         )),
     ),
+
+    (
+        transform: Some((
+            translation: (5, 0.5, -4),
+            scale: (0.5, 1, 0.5),
+            rotation: (0, 0, 0, 1),
+        )),
+        rigid_body: Some((
+            mass: 10,
+            shape: AABB((0.5, 1, 0.5)),
+            ty: Kinematic,
+        )),
+        pickup: Some(Gun(Shotgun)),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
+        color: Some((
+            r: 110,
+            g: 87,
+            b: 115,
+        )),
+    ),
+    (
+        transform: Some((
+            translation: (5, 0.5, -8),
+            scale: (0.5, 1, 0.5),
+            rotation: (0, 0, 0, 1),
+        )),
+        rigid_body: Some((
+            mass: 10,
+            shape: AABB((0.5, 1, 0.5)),
+            ty: Kinematic,
+        )),
+        pickup: Some(Ammo(Shotgun)),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
+        color: Some((
+            r: 0,
+            g: 0,
+            b: 0,
+        )),
+    ),
     (
     transform: Some((
         translation: (5, -5, 2),

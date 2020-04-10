@@ -57,24 +57,41 @@ impl HealthSystem {
         let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
 
         for ev in chan.read(&mut self.rdr_id) {
-            if let GameEvent::EntityShot { entity } = ev {
-                if let Ok(mut health) = world.get_mut::<Health>(*entity) {
-                    health.current -= 1.0;
-                    info!("Entity was shot. current health = {:?}", health.current);
+            match ev {
+                GameEvent::EntityShot { entity } => {
+                    if let Ok(mut health) = world.get_mut::<Health>(*entity) {
+                        health.current -= 1.0;
+                        info!("Entity was shot. current health = {:?}", health.current);
 
-                    health_updates.push(GameEvent::HealthUpdate {
-                        entity: *entity,
-                        new_health: health.current,
-                    });
+                        health_updates.push(GameEvent::HealthUpdate {
+                            entity: *entity,
+                            new_health: health.current,
+                        });
 
-                    if health.current <= 0.0 {
-                        if world.get::<Player>(*entity).is_ok() {
-                            entities_to_delete.push(GameEvent::PlayerDead { entity: *entity });
-                        } else {
-                            entities_to_delete.push(GameEvent::Delete(*entity));
+                        if health.current <= 0.0 {
+                            if world.get::<Player>(*entity).is_ok() {
+                                entities_to_delete.push(GameEvent::PlayerDead { entity: *entity });
+                            } else {
+                                entities_to_delete.push(GameEvent::Delete(*entity));
+                            }
                         }
                     }
                 }
+                GameEvent::PickupHealth { entity, health: h } => {
+                    info!(
+                        "Got pickup health event. for entity {:?} and ammo {}",
+                        entity.to_bits(),
+                        h
+                    );
+                    if let Ok(mut health) = world.get_mut::<Health>(*entity) {
+                        health.current += *h as f32;
+                        health_updates.push(GameEvent::HealthUpdate {
+                            entity: *entity,
+                            new_health: health.current,
+                        });
+                    }
+                }
+                _ => (),
             }
         }
 

@@ -186,6 +186,10 @@ impl PhysicWorld {
                             continue;
                         }
 
+                        if body.ty == BodyType::Kinematic || other.ty == BodyType::Kinematic {
+                            continue;
+                        }
+
                         if body.ty == BodyType::Static && other.ty == BodyType::Static {
                             continue;
                         }
@@ -412,6 +416,21 @@ impl PhysicWorld {
         }
 
         toi
+    }
+
+    /// Check if the AABBs of the two bodies are overlapping. If yes, return true, else return
+    /// false. If body index is not in physics world, return false.
+    pub fn check_aabb_collision(&self, a: BodyIndex, b: BodyIndex) -> bool {
+        match (self.current_state.get(a), self.current_state.get(b)) {
+            (Some(Some(a)), Some(Some(b))) => {
+                let Shape::AABB(halfwidth) = a.shape;
+                let Shape::AABB(other_halfwidth) = b.shape;
+                let aabb = Aabb::new(a.position, halfwidth);
+                let other_aabb = Aabb::new(b.position, other_halfwidth);
+                aabb.intersect(&other_aabb)
+            }
+            _ => false,
+        }
     }
 }
 

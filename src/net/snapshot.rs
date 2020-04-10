@@ -15,12 +15,16 @@ use crate::colors::RgbColor;
 use crate::controller::Fps;
 use crate::ecs::Transform;
 use crate::event::GameEvent;
-use crate::gameplay::gun::{Gun, GunInventory};
-use crate::gameplay::health::Health;
-use crate::gameplay::player::{MainPlayer, Player};
+use crate::gameplay::{
+    gun::{Gun, GunInventory},
+    health::Health,
+    pickup::PickUp,
+    player::{MainPlayer, Player},
+};
 use crate::render::debug::DebugRender;
 use crate::render::{billboard::Billboard, Render};
 use crate::resources::Resources;
+
 use hecs::{Entity, EntityBuilder, World};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
