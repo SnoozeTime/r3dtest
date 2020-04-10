@@ -10,6 +10,7 @@ use std::fs;
 
 pub mod bounding_box;
 pub mod collision;
+mod physic2;
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum Shape {
