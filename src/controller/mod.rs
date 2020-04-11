@@ -1,5 +1,6 @@
 use crate::camera::{Camera, LookAt};
 use crate::controller::client::ClientCommand;
+use crate::ecs::Transform;
 use crate::event::{Event, GameEvent};
 use crate::gameplay::gun::{Gun, GunInventory};
 use crate::gameplay::player::{Player, PlayerState};
@@ -104,6 +105,7 @@ fn apply_cmd(
         ClientCommand::Shoot => {
             let camera = world.get::<Camera>(e).unwrap();
             let rb = world.get::<RigidBody>(e).unwrap();
+            let t = world.get::<Transform>(e).unwrap();
             if let Ok(mut gun) = world.get_mut::<Gun>(e) {
                 if gun.can_shoot() {
                     gun.shoot();
@@ -115,7 +117,7 @@ fn apply_cmd(
                         camera.front
                     );
 
-                    let mut d = physics.raycast(h, glam::vec3(0.0, 0.0, 0.0), camera.front);
+                    let mut d = physics.raycast(h, t.translation, camera.front);
                     debug!("{:?}", d);
                     d.sort_by(|(toi, _), (toi_o, _)| toi.partial_cmp(toi_o).unwrap());
                     if let Some(ev) = create_shot_event(d, resources) {
@@ -173,10 +175,10 @@ impl Controller {
         physics: &mut PhysicWorld,
         _resources: &Resources,
     ) {
-        for (_, (fps, rb)) in world.query::<(&mut Fps, &RigidBody)>().iter() {
+        for (_, (fps, rb, t)) in world.query::<(&mut Fps, &RigidBody, &Transform)>().iter() {
             let h = rb.handle.unwrap();
             let on_ground = {
-                let mut d = physics.raycast(h, glam::vec3(0.0, 0.0, 0.0), -glam::Vec3::unit_y());
+                let mut d = physics.raycast(h, t.translation, -glam::Vec3::unit_y());
                 d.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
 
                 debug!("Raycast on_ground = {:?}", d);

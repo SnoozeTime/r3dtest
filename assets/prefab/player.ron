@@ -28,7 +28,7 @@
     )),
     player: Some((
         nb: 0,
-        state: Respawn(3.0),
+        state: Respawn(1.0),
     )),
     camera: Some((
         active: true,
@@ -41,13 +41,16 @@
         mass: 1,
         shape: AABB((0.5, 1.1, 0.5)),
         ty: Dynamic,
+        max_linear_velocity: 10.0,
+        max_angular_velocity: 0.0,
+        linear_damping: 0.0,
     )),
     fps: Some((
         on_ground: false,
         jumping: true,
         sensitivity: 0.005,
         speed: 1.5,
-        air_speed: 0.1,
+        air_speed: 1.5,
     )),
     health: Some((
         max: 10,

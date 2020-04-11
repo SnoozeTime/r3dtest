@@ -1,0 +1,55 @@
+[
+    (
+        transform: Some((
+            translation: (0, 2, -2),
+            scale: (1, 1, 1),
+            rotation: (0, 0, 0, 1),
+        )),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
+        rigid_body: Some((
+            mass: 10,
+            shape: AABB((1, 1, 1)),
+            ty: Static,
+            max_linear_velocity: 10.0,
+            max_angular_velocity: 0.0,
+            linear_damping: 0.0,
+        )),
+        color: Some((
+            r: 212,
+            g: 80,
+            b: 121,
+        )),
+        health: Some((
+            current: 2,
+            max: 2,
+        )),
+    ),
+
+    (
+        transform: Some((
+            translation: (0, -1., 0),
+            scale: (25, 1, 25),
+            rotation: (0, 0, 0, 1),
+        )),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
+        rigid_body: Some((
+            mass: 10,
+            shape: AABB((25, 1, 25)),
+            ty: Static,
+            max_linear_velocity: 10.0,
+            max_angular_velocity: 0.0,
+            linear_damping: 0.0,
+        )),
+        color: Some((
+            r: 233,
+            g: 225,
+            b: 204,
+        )),
+    ),
+]

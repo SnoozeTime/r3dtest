@@ -32,6 +32,9 @@ fn spawn_floor(w: f32, h: f32) -> (serialization::SerializedEntity, f32, f32) {
         ty: BodyType::Static,
         mass: 100.0,
         handle: None,
+        max_linear_velocity: 10.0,
+        max_angular_velocity: 0.0,
+        linear_damping: 0.0,
     };
     let (x_offset, z_offset) = (w * CELL_SIZE / 2.0, h * CELL_SIZE / 2.0);
 
@@ -71,6 +74,9 @@ fn spawn_block(x: f32, z: f32, x_offset: f32, z_offset: f32) -> serialization::S
         ty: BodyType::Static,
         mass: 100.0,
         handle: None,
+        max_linear_velocity: 10.0,
+        max_angular_velocity: 0.0,
+        linear_damping: 0.0,
     };
 
     serialization::SerializedEntity {

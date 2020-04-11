@@ -67,7 +67,7 @@ impl PickUpSystem {
             // for each pickup, look if there is collision with a player.
             for (e, player_handle) in player_handles.iter() {
                 debug!(
-                    "Should check collisions between {} and {}",
+                    "Should check collisions between {:?} and {:?}",
                     player_handle, pickup_handle
                 );
                 if physics.check_aabb_collision(*player_handle, pickup_handle) {

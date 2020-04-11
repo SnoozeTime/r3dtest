@@ -42,6 +42,11 @@ futures-util = "0.3.4"
 # display text
 glyph_brush = "0.6.3"
 
+# Physics from the community :)
+nalgebra   = "0.18"
+ncollide3d = "0.20"
+nphysics3d = "0.12"
+
 [dependencies.glam]
 version = "0.8.4"
 features = ["serde"]
