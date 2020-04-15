@@ -11,6 +11,8 @@ use crate::physics::RigidBody;
 use crate::render::{
     billboard::Billboard,
     debug::DebugRender,
+    lighting::{AmbientLight, DirectionalLight},
+    particle::ParticleEmitter,
     sprite::{ScreenPosition, SpriteRender},
     Render,
 };
@@ -137,5 +139,8 @@ serialize! {
     (player, Player),
     (gun, Gun),
     (gun_inventory, GunInventory),
-    (pickup, PickUp)
+    (pickup, PickUp),
+    (particle, ParticleEmitter),
+    (ambient_light, AmbientLight),
+    (directional_light, DirectionalLight)
 }

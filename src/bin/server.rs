@@ -66,7 +66,7 @@ fn main() {
 
     // add the rigid bodies to the simulation.
     for (e, (t, mut rb)) in world.query::<(&Transform, &mut RigidBody)>().iter() {
-        let id = physics.add_body(t.translation, &mut rb);
+        let id = physics.add_body(&t, &mut rb);
         body_to_entity.insert(id, e);
     }
     let mut resources = setup_resources();
@@ -111,7 +111,7 @@ fn main() {
         }
 
         // Update health if somebody has been SHOT.
-        health_system.update(&world, &resources);
+        health_system.update(&mut world, &resources);
         player_system.update(dt, &mut world, &resources);
         update_debug_components(&mut world, &physics);
         pickup_system.update(&world, &physics, &mut resources);

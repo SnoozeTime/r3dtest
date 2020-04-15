@@ -1,4 +1,4 @@
 (
-    friction: 0.5,
+    friction: 0,
     grav: -9.8,
 )

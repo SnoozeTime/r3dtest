@@ -1,5 +1,6 @@
 use crate::net::snapshot::Deltable;
 use glam::{Quat, Vec3};
+use nalgebra::{Isometry3, UnitQuaternion};
 use serde_derive::{Deserialize, Serialize};
 
 pub mod serialization;
@@ -19,6 +20,40 @@ pub struct Transform {
 impl Transform {
     pub fn to_model(&self) -> glam::Mat4 {
         glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+    }
+
+    pub fn to_isometry(&self) -> Isometry3<f32> {
+        /**
+                /// let tra = Translation3::new(0.0, 0.0, 3.0);
+        /// let rot = UnitQuaternion::from_scaled_axis(Vector3::y() * f32::consts::PI);
+        /// let iso = Isometry3::from_parts(tra, rot);
+
+            **/
+        let tra = nalgebra::geometry::Translation3::new(
+            self.translation.x(),
+            self.translation.y(),
+            self.translation.z(),
+        );
+        let (axis, angle) = self.rotation.to_axis_angle();
+        let rot = UnitQuaternion::from_scaled_axis(
+            nalgebra::Vector3::new(axis.x(), axis.y(), axis.z()) * angle,
+        );
+
+        Isometry3::from_parts(tra, rot)
+    }
+
+    pub fn set_isometry(&mut self, isometry: &Isometry3<f32>) {
+        self.translation = glam::vec3(
+            isometry.translation.x,
+            isometry.translation.y,
+            isometry.translation.z,
+        );
+        self.rotation = Quat::from_xyzw(
+            isometry.rotation.i,
+            isometry.rotation.j,
+            isometry.rotation.k,
+            isometry.rotation.w,
+        );
     }
 }
 

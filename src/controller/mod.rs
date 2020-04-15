@@ -11,8 +11,8 @@ use hecs::Entity;
 use log::{debug, error, info, trace};
 use serde_derive::{Deserialize, Serialize};
 use shrev::EventChannel;
-
 pub mod client;
+pub mod fps;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Fps {
@@ -25,6 +25,9 @@ pub struct Fps {
 
     #[serde(skip)]
     pub on_ground: bool,
+
+    #[serde(skip)]
+    pub moving: bool,
 }
 
 impl Fps {
@@ -84,9 +87,9 @@ fn apply_cmd(
         }
         ClientCommand::Move(dir) => {
             let rb = world.get::<RigidBody>(e).unwrap();
-            let fps = world.get::<Fps>(e).unwrap();
+            let mut fps = world.get_mut::<Fps>(e).unwrap();
             let h = rb.handle.unwrap();
-
+            fps.moving = true;
             let speed = fps.get_speed();
             physics.add_velocity_change(h, dir.normalize() * speed);
         }
@@ -95,11 +98,10 @@ fn apply_cmd(
             let mut fps = world.get_mut::<Fps>(e).unwrap();
 
             if fps.on_ground {
-                info!("JUMP");
+                trace!("JUMP");
                 // 10.0 for hiiiiiigh jump
                 physics.add_velocity_change(rb.handle.unwrap(), 1.5 * glam::Vec3::unit_y());
                 fps.jumping = true;
-                physics.set_friction(rb.handle.unwrap(), 0.0);
             }
         }
         ClientCommand::Shoot => {
@@ -110,17 +112,17 @@ fn apply_cmd(
                 if gun.can_shoot() {
                     gun.shoot();
                     let h = rb.handle.unwrap();
-                    debug!("CAMERA IS {:?}", *camera);
-                    debug!(
+                    trace!("CAMERA IS {:?}", *camera);
+                    trace!(
                         "Will raycast from {:?} direction {:?}",
                         physics.get_pos(h),
                         camera.front
                     );
 
                     let mut d = physics.raycast(h, t.translation, camera.front);
-                    debug!("{:?}", d);
+                    trace!("{:?}", d);
                     d.sort_by(|(toi, _), (toi_o, _)| toi.partial_cmp(toi_o).unwrap());
-                    if let Some(ev) = create_shot_event(d, resources) {
+                    if let Some(ev) = create_shot_event(d, resources, camera.front) {
                         let mut event_channel =
                             resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
                         event_channel.single_write(ev);
@@ -134,7 +136,7 @@ fn apply_cmd(
             match (world.get_mut::<GunInventory>(e), world.get_mut::<Gun>(e)) {
                 (Ok(mut inventory), Ok(mut gun)) => {
                     if let Some(new_gun) = inventory.switch_gun(*gun, gun_slot) {
-                        info!("Will change to gun slot {}", gun_slot);
+                        trace!("Will change to gun slot {}", gun_slot);
 
                         *gun = new_gun;
                         let mut event_channel =
@@ -145,6 +147,7 @@ fn apply_cmd(
                 _ => (),
             }
         }
+        _ => (),
     }
 }
 
@@ -181,7 +184,7 @@ impl Controller {
                 let mut d = physics.raycast(h, t.translation, -glam::Vec3::unit_y());
                 d.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
 
-                debug!("Raycast on_ground = {:?}", d);
+                trace!("Raycast on_ground = {:?}", d);
                 if let Some((minimum_distance, _)) = d.pop() {
                     if minimum_distance < 1.5 {
                         true
@@ -198,9 +201,19 @@ impl Controller {
             fps.on_ground = on_ground;
 
             if fps.jumping && on_ground {
-                physics.set_friction(h, 0.1);
+                //physics.set_friction(h, 10.0);
                 fps.jumping = false;
             }
+            let mut vel = physics.get_linear_velocity(h).unwrap();
+            debug!("VELOCITY IS {:?}", vel);
+            if !fps.moving && on_ground {
+                let mut vel = physics.get_linear_velocity(h).unwrap();
+                vel.set_y(0.0);
+
+                physics.add_velocity_change(h, -rb.linear_damping * vel);
+            }
+
+            fps.moving = false;
         }
     }
 }
@@ -208,6 +221,7 @@ impl Controller {
 fn create_shot_event(
     raycast_result: Vec<(f32, BodyIndex)>,
     resources: &Resources,
+    direction: glam::Vec3,
 ) -> Option<GameEvent> {
     raycast_result
         .iter()
@@ -216,7 +230,10 @@ fn create_shot_event(
             let body_to_entity = resources.fetch::<BodyToEntity>().unwrap();
             info!("Get entity");
             let entity = body_to_entity.get(&h).unwrap();
-            GameEvent::EntityShot { entity: *entity }
+            GameEvent::EntityShot {
+                entity: *entity,
+                dir: direction,
+            }
         })
         .next()
 }

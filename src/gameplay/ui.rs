@@ -1,7 +1,7 @@
 //! Stuff displayed on the screen (2D)
 //! Health, armor, gun, ammos and so on.
 
-use crate::animation::{Animation, AnimationController};
+use crate::animation::AnimationController;
 use crate::colors::RgbColor;
 use crate::ecs::serialization::SerializedEntity;
 use crate::event::GameEvent;
@@ -13,7 +13,6 @@ use crate::render::text::Text;
 use crate::resources::Resources;
 use log::info;
 use shrev::{EventChannel, ReaderId};
-use std::collections::HashMap;
 use std::fs;
 
 pub struct UiSystem {
@@ -101,7 +100,7 @@ impl UiSystem {
 
     fn update_ammo(&self, world: &hecs::World) -> bool {
         let mut should_update = false;
-        if let Some(weapon_entity) = self.weapon_entity {
+        if let Some(_) = self.weapon_entity {
             if let Some((_, (g, _))) = world.query::<(&Gun, &MainPlayer)>().iter().next() {
                 let mut text = world.get_mut::<Text>(self.ammo_entity).unwrap();
                 println!("AMMO IS {}", g.ammo);
@@ -180,7 +179,7 @@ fn spawn_armor_counter(world: &mut hecs::World) -> hecs::Entity {
 }
 
 fn spawn_weapon(world: &mut hecs::World) -> Option<hecs::Entity> {
-    let prefab = if let Some((e, (_, g))) = world.query::<(&MainPlayer, &Gun)>().iter().next() {
+    let prefab = if let Some((_, (_, g))) = world.query::<(&MainPlayer, &Gun)>().iter().next() {
         let prefab_path = g.gun_type.get_prefab_path();
         let ser: SerializedEntity =
             ron::de::from_str(&fs::read_to_string(&prefab_path).unwrap()).unwrap();

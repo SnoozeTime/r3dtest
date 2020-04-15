@@ -10,6 +10,7 @@ use luminance_windowing::CursorMode;
 use std::fs::{self};
 
 use r3dtest::animation::AnimationSystem;
+use r3dtest::controller::fps::FpsController;
 use r3dtest::controller::{client, Controller};
 use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
@@ -87,7 +88,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
     let mut body_to_entity = BodyToEntity::default();
     // add the rigid bodies to the simulation.
     for (e, (t, mut rb)) in world.query::<(&Transform, &mut RigidBody)>().iter() {
-        let id = physics.add_body(t.translation, &mut rb);
+        let id = physics.add_body(&t, &mut rb);
         body_to_entity.insert(id, e);
     }
 
@@ -113,7 +114,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
 
     let mut current_time = Instant::now();
     let client_controller = client::ClientController::get_offline_controller();
-
+    //let mut fps_controller = FpsController::default();
     'app: loop {
         {
             let mut input = resources.fetch_mut::<Input>().unwrap();
@@ -131,6 +132,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
             .drain(..)
             .map(|ev| (player_entity, Event::Client(ev)))
             .collect();
+        //fps_controller.apply_commands(&cmds);
         controller.apply_inputs(cmds, &mut world, &mut physics, &resources);
         controller.update(&mut world, &mut physics, &resources);
         renderer.update_view_matrix(&world);
@@ -147,14 +149,15 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         // Update the positions.
         for (_, (mut t, rb)) in world.query::<(&mut Transform, &RigidBody)>().iter() {
             if let Some(h) = rb.handle {
-                let new_position = physics.get_pos(h).unwrap();
-                t.translation = new_position;
+                let new_iso = physics.get_isometry(h).unwrap();
+                t.translation = new_iso.translation;
+                t.rotation = new_iso.rotation;
             }
         }
-        renderer.update_view_matrix(&world);
+        renderer.update(&mut world, dt, &mut resources);
 
         // Update health if somebody has been SHOT.
-        health_system.update(&world, &resources);
+        health_system.update(&mut world, &resources);
         ui_system.update(&mut world, &mut resources);
         player_system.update(dt, &mut world, &resources);
         animation_system.animate(&mut world);
@@ -162,6 +165,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         update_debug_components(&mut world, &physics);
         gun_system.update(&mut world, dt, &mut resources);
         pickup_system.update(&world, &physics, &mut resources);
+        //fps_controller.update(&mut world, &mut physics, dt);
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------

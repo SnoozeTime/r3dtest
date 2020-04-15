@@ -199,6 +199,7 @@ macro_rules! snapshot {
                                 sensitivity: 0.005,
                                 speed: 1.5,
                                 air_speed: 0.1,
+                                moving: false,
                             };
                             builder.add(fps);
                             builder.add(MainPlayer);

@@ -161,7 +161,7 @@ pub fn spawn_player(
     let idx = {
         let mut rb = world.get_mut::<RigidBody>(e).unwrap();
         let transform = world.get::<Transform>(e).unwrap();
-        physics.add_body(transform.translation, &mut rb)
+        physics.add_body(&*transform, &mut rb)
     };
     let current_gun = {
         let inventory = world

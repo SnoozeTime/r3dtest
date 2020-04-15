@@ -1,4 +1,3 @@
-use glam::Vec3;
 use hecs::Entity;
 #[allow(unused_imports)]
 use log::{debug, info, trace};
@@ -6,12 +5,15 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 extern crate nalgebra as na;
 use self::na::Isometry3;
+use crate::ecs::Transform;
+use glam::Quat;
 use na::Point3;
 use na::Vector3;
+use ncollide3d::bounding_volume::AABB;
 use ncollide3d::pipeline::CollisionGroups;
-use ncollide3d::query::Ray;
-use ncollide3d::shape::{Cuboid, ShapeHandle};
-use nphysics3d::algebra::{Force3, ForceType};
+use ncollide3d::query::{Contact, Proximity, Ray};
+use ncollide3d::shape::{ConvexHull, Cuboid, ShapeHandle};
+use nphysics3d::algebra::{Force3, ForceType, Velocity3};
 use nphysics3d::force_generator::DefaultForceGeneratorSet;
 use nphysics3d::joint::DefaultJointConstraintSet;
 use nphysics3d::object::{
@@ -19,13 +21,13 @@ use nphysics3d::object::{
     DefaultColliderHandle, DefaultColliderSet, RigidBodyDesc,
 };
 use nphysics3d::world::{DefaultGeometricalWorld, DefaultMechanicalWorld};
-use std::any::Any;
 use std::fs;
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
 pub enum Shape {
     // half-width. Center of box is position of rigidbody.
     AABB(glam::Vec3),
+    ConvexHull,
 }
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Eq, PartialEq)]
@@ -82,7 +84,7 @@ pub struct PhysicWorld {
     geometrical_world: DefaultGeometricalWorld<f32>,
     bodies: DefaultBodySet<f32>,
     colliders: DefaultColliderSet<f32>,
-    joint_constraints: DefaultJointConstraintSet<f32, DefaultBodySet<f32>>,
+    //  joint_constraints: DefaultJointConstraintSet<f32, DefaultBodySet<f32>>,
     force_generators: DefaultForceGeneratorSet<f32, DefaultBodySet<f32>>,
     //ground_handle: BodyIndex,
 }
@@ -103,7 +105,7 @@ impl PhysicWorld {
 
         let bodies = DefaultBodySet::new();
         let colliders = DefaultColliderSet::new();
-        let joint_constraints = DefaultJointConstraintSet::new();
+        // let joint_constraints = DefaultJointConstraintSet::new();
         let force_generators = DefaultForceGeneratorSet::new();
 
         Self {
@@ -111,30 +113,101 @@ impl PhysicWorld {
             geometrical_world,
             bodies,
             colliders,
-            joint_constraints,
+            //joint_constraints,
             force_generators,
         }
     }
 
     pub fn step(&mut self, _dt: f32) {
+        let mut joint = DefaultJointConstraintSet::new();
         self.mechanical_world.step(
             &mut self.geometrical_world,
             &mut self.bodies,
             &mut self.colliders,
-            &mut self.joint_constraints,
+            &mut joint,
             &mut self.force_generators,
-        )
+        );
+
+        let contact_events = self.geometrical_world.contact_events();
+        for event in contact_events.into_iter() {
+            debug!("Contact events after step {:?}", event);
+        }
+        let proximity_events = self.geometrical_world.proximity_events();
+        for event in proximity_events.into_iter() {
+            debug!("Contact events after step {:?}", event);
+        }
+        /*
+                 /// The contact events pool.
+        pub fn contact_events(&self) -> &ContactEvents<CollHandle> {
+            self.narrow_phase.contact_events()
+        }
+
+        /// The proximity events pool.
+        pub fn proximity_events(&self) -> &ProximityEvents<CollHandle> {
+            self.narrow_phase.proximity_events()
+        }
+                */
     }
 
-    pub fn add_body(&mut self, position: glam::Vec3, body_component: &mut RigidBody) -> BodyIndex {
+    pub fn add_body(&mut self, transform: &Transform, body_component: &mut RigidBody) -> BodyIndex {
         // Shape is a cuboid :) for now TODO modify that
-        let Shape::AABB(aabb) = body_component.shape;
-        let cuboid = ShapeHandle::new(Cuboid::new(Vector3::new(aabb.x(), aabb.y(), aabb.z())));
+        info!("Will add body to physic world = {:?}", body_component);
+        let shape_handle = match body_component.shape {
+            Shape::AABB(aabb) => {
+                ShapeHandle::new(Cuboid::new(Vector3::new(aabb.x(), aabb.y(), aabb.z())))
+            }
+            Shape::ConvexHull => {
+                let points = vec![
+                    Point3::new(1.0, -1.0, -1.0),
+                    Point3::new(1.0, -1.0, 1.0),
+                    Point3::new(0.49584853649139404, -1.0, 1.0),
+                    Point3::new(-1.0, -1.0, -0.49584853649139404),
+                    Point3::new(-1.0, -1.0, -1.0),
+                    // second face
+                    Point3::new(1.0, 1.0, 1.0),
+                    Point3::new(0.49584853649139404, 1.0, 1.0),
+                    Point3::new(0.49584853649139404, -1.0, 1.0),
+                    Point3::new(1.0, -1.0, 1.0),
+                    //third face
+                    Point3::new(-1.0, 1.0, -1.0),
+                    Point3::new(1.0, 1.0, -1.0),
+                    Point3::new(1.0, -1.0, -1.0),
+                    Point3::new(-1.0, -1.0, -1.0),
+                    // fourth face
+                    Point3::new(1.0, 1.0, -1.0),
+                    Point3::new(1.0, 1.0, 1.0),
+                    Point3::new(1.0, -1.0, 1.0),
+                    Point3::new(1.0, -1.0, -1.0),
+                    // 5th
+                    Point3::new(-1.0, -1.0, -1.0),
+                    Point3::new(-1.0, -1.0, -0.49584853649139404),
+                    Point3::new(-1.0, 1.0, -0.49584853649139404),
+                    Point3::new(-1.0, 1.0, -1.0),
+                    // 6th
+                    Point3::new(0.49584853649139404, -1.0, 1.0),
+                    Point3::new(0.49584853649139404, 1.0, 1.0),
+                    Point3::new(-1.0, 1.0, -0.49584853649139404),
+                    Point3::new(-1.0, -1.0, -0.49584853649139404),
+                    // 7th
+                    Point3::new(-1.0, 1.0, -1.0),
+                    Point3::new(-1.0, 1.0, -0.49584853649139404),
+                    Point3::new(0.49584853649139404, 1.0, 1.0),
+                    Point3::new(1.0, 1.0, 1.0),
+                    Point3::new(1.0, 1.0, -1.0),
+                ];
+
+                let hull =
+                    ConvexHull::try_from_points(&points).expect("Convex hull computation failed.");
+                println!("SHAPE HANDLE = {:?}", hull);
+                ShapeHandle::new(hull)
+            }
+        };
+
         let rb = RigidBodyDesc::new()
-            .translation(Vector3::new(position.x(), position.y(), position.z()))
-            .set_max_angular_velocity(body_component.max_angular_velocity) // NO ROTATION :)
+            //.translation(Vector3::new(position.x(), position.y(), position.z()))
+            .position(transform.to_isometry())
+            .set_max_angular_velocity(body_component.max_angular_velocity)
             .set_max_linear_velocity(body_component.max_linear_velocity)
-            .set_linear_damping(body_component.linear_damping)
             .set_status(match body_component.ty {
                 BodyType::Static => BodyStatus::Static,
                 BodyType::Dynamic => BodyStatus::Dynamic,
@@ -145,7 +218,7 @@ impl PhysicWorld {
         let rb_handle = self.bodies.insert(rb);
 
         // Build the collider.
-        let co = ColliderDesc::new(cuboid.clone())
+        let co = ColliderDesc::new(shape_handle)
             .density(1.0)
             .build(BodyPartHandle(rb_handle, 0));
         // Insert the collider to the body set.
@@ -167,6 +240,13 @@ impl PhysicWorld {
                 let arr: [f32; 3] = part.position().translation.vector.into();
                 glam::vec3(arr[0], arr[1], arr[2])
             })
+    }
+    pub fn get_isometry(&self, body_index: BodyIndex) -> Option<Transform> {
+        self.bodies.rigid_body(body_index.0).map(|rb| {
+            let mut t = Transform::default();
+            t.set_isometry(rb.position());
+            t
+        })
     }
 
     pub fn get_shape(&self, h: BodyIndex) -> Option<Shape> {
@@ -191,18 +271,60 @@ impl PhysicWorld {
     /// Directly add a velocity change :) instead of using an acceleration
     pub fn add_velocity_change(&mut self, h: BodyIndex, force: glam::Vec3) {
         if let Some(body) = self.bodies.get_mut(h.0) {
-            body.apply_force(
-                0,
-                &Force3::new(
-                    Vector3::new(force.x(), force.y(), force.z()),
-                    Vector3::new(0., 0., 0.),
-                ),
-                ForceType::VelocityChange,
-                true,
-            )
+            let current_speed = body.part(0).map(|part| part.velocity().linear.magnitude());
+
+            if let Some(speed) = current_speed {
+                if speed < 20.0 {
+                    body.apply_force(
+                        0,
+                        &Force3::new(
+                            Vector3::new(force.x(), force.y(), force.z()),
+                            Vector3::new(0., 0., 0.),
+                        ),
+                        ForceType::VelocityChange,
+                        true,
+                    );
+                }
+            }
         }
     }
 
+    pub fn set_linear_velocity(&mut self, h: BodyIndex, new_velocity: glam::Vec3) {
+        if let Some(rb) = self.bodies.rigid_body_mut(h.0) {
+            rb.set_linear_velocity(Vector3::new(
+                new_velocity.x(),
+                new_velocity.y(),
+                new_velocity.z(),
+            ));
+        }
+    }
+
+    pub fn get_linear_velocity(&mut self, h: BodyIndex) -> Option<glam::Vec3> {
+        if let Some(rb) = self.bodies.rigid_body_mut(h.0) {
+            let v = rb.velocity().linear;
+            Some(glam::vec3(v.x, v.y, v.z))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_position(&mut self, h: BodyIndex) -> Option<glam::Vec3> {
+        if let Some(rb) = self.bodies.rigid_body_mut(h.0) {
+            let p = rb.position().translation;
+            Some(glam::vec3(p.x, p.y, p.z))
+        } else {
+            None
+        }
+    }
+
+    pub fn set_position(&mut self, h: BodyIndex, new_position: glam::Vec3) {
+        if let Some(rb) = self.bodies.rigid_body_mut(h.0) {
+            rb.set_position(Isometry3::new(
+                Vector3::new(new_position.x(), new_position.y(), new_position.z()),
+                Vector3::new(0., 0., 0.),
+            ));
+        }
+    }
     // Set the friction. That's necessary to avoid sliding during movemnet. when the player is walking,
     // friction is high. When jumping it is a bit lower.
     pub fn set_friction(&mut self, h: BodyIndex, friction: f32) {
@@ -210,6 +332,37 @@ impl PhysicWorld {
             if let Some(rb) = body.downcast_mut::<nphysics3d::object::RigidBody<f32>>() {
                 rb.set_linear_damping(friction);
             }
+        }
+    }
+
+    pub fn contact_with(&self, h: BodyIndex) -> Option<Vec<(glam::Vec3, f32)>> {
+        if let Some(coll) = self.colliders.get(h.1) {
+            let body = self.bodies.rigid_body(coll.body()).unwrap();
+            let shape = coll.shape().aabb(&body.position());
+            Some(
+                self.geometrical_world
+                    .interferences_with_aabb(&self.colliders, &shape, &CollisionGroups::default())
+                    .filter(|(c, _)| *c != h.1)
+                    .filter(|(c, obj)| self.bodies.get(obj.body()).unwrap().is_static())
+                    .filter_map(|(c, obj)| {
+                        ncollide3d::query::contact(
+                            &body.position(),
+                            coll.shape(),
+                            obj.position(),
+                            obj.shape(),
+                            1.0,
+                        )
+                    })
+                    .map(|contact| {
+                        (
+                            glam::vec3(contact.normal.x, contact.normal.y, contact.normal.z),
+                            contact.depth,
+                        )
+                    })
+                    .collect(),
+            )
+        } else {
+            None
         }
     }
 

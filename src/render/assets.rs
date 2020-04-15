@@ -54,6 +54,7 @@ impl AssetManager {
                 std::env::var("ASSET_PATH").unwrap() + "models/monkey.obj",
                 std::env::var("ASSET_PATH").unwrap() + "models/axis.obj",
                 std::env::var("ASSET_PATH").unwrap() + "models/cube.obj",
+                std::env::var("ASSET_PATH").unwrap() + "models/ramp.obj",
             ],
         );
         Self { sprites, meshes }

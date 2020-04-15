@@ -16,6 +16,8 @@ pub enum ClientCommand {
     Jump,
     Shoot,
     ChangeGun(GunSlot),
+    Forward(f32),
+    Lateral(f32),
 }
 
 pub struct ClientController {
@@ -46,6 +48,18 @@ impl ClientController {
             let input = resources.fetch::<Input>().unwrap();
 
             if let PlayerState::Alive = p.state {
+                if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
+                    commands.push(ClientCommand::Lateral(1.0));
+                } else if input.key_down.contains(&Key::Right) || input.key_down.contains(&Key::D) {
+                    commands.push(ClientCommand::Lateral(-1.0));
+                }
+                if input.key_down.contains(&Key::Up) || input.key_down.contains(&Key::W) {
+                    commands.push(ClientCommand::Forward(-1.0));
+                } else if input.key_down.contains(&Key::Down) || input.key_down.contains(&Key::S) {
+                    commands.push(ClientCommand::Forward(1.0));
+                }
+
+                // TODO maybe remove that later.
                 let lateral_dir = {
                     if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
                         Some(camera.left)

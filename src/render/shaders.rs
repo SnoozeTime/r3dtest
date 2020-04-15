@@ -1,4 +1,8 @@
 use super::sprite;
+use crate::render::lighting::{
+    AmbientLightProgram, AmbientShaderInterface, DirectionalLightProgram,
+};
+use crate::render::particle::ParticleShaderInterface;
 use crate::render::{billboard, debug, text, VertexSementics};
 use luminance::linear::M44;
 use luminance::shader::program::{Program, Uniform, UniformInterface};
@@ -43,6 +47,10 @@ pub struct Shaders {
     pub text_program: Program<text::VertexSemantics, (), text::ShaderInterface>,
     pub billboard_program: Program<(), (), billboard::ShaderInterface>,
     pub debug_program: Program<debug::VertexSemantics, (), debug::ShaderInterface>,
+    pub copy_program: Program<(), (), super::CopyShaderInterface>,
+    pub particle_program: Program<(), (), ParticleShaderInterface>,
+    pub ambient_program: AmbientLightProgram,
+    pub directional_program: DirectionalLightProgram,
     rx: Receiver<Result<notify::Event, notify::Error>>,
     _watcher: RecommendedWatcher,
 }
@@ -54,8 +62,8 @@ fn get_program_path(program_name: &str) -> String {
 impl Shaders {
     pub fn new() -> Self {
         let regular_program: Program<VertexSementics, (), AxisShaderInterface> = load_program(
-            get_program_path("shaders/axis_vs.glsl"),
-            get_program_path("shaders/axis_fs.glsl"),
+            get_program_path("shaders/deferred_vs.glsl"),
+            get_program_path("shaders/deferred_fs.glsl"),
         );
 
         let sprite_program = load_program(
@@ -76,6 +84,22 @@ impl Shaders {
             get_program_path("shaders/debug_fs.glsl"),
         );
 
+        let copy_program = load_program(
+            get_program_path("shaders/copy-vs.glsl"),
+            get_program_path("shaders/copy-fs.glsl"),
+        );
+        let particle_program = load_program(
+            get_program_path("shaders/particle_vs.glsl"),
+            get_program_path("shaders/particle_fs.glsl"),
+        );
+        let ambient_program = load_program(
+            get_program_path("shaders/copy-vs.glsl"),
+            get_program_path("shaders/ambient_light_fs.glsl"),
+        );
+        let directional_program = load_program(
+            get_program_path("shaders/copy-vs.glsl"),
+            get_program_path("shaders/directional_light_fs.glsl"),
+        );
         let (tx, rx) = std::sync::mpsc::channel();
 
         // Add a path to be watched. All files and directories at that path and
@@ -95,7 +119,11 @@ impl Shaders {
             sprite_program,
             text_program,
             billboard_program,
+            copy_program,
             debug_program,
+            particle_program,
+            ambient_program,
+            directional_program,
             rx,
             _watcher: watcher,
         }
@@ -114,11 +142,11 @@ impl Shaders {
         }
 
         if should_reload {
-            println!("Reload shaders");
             self.regular_program = load_program(
-                get_program_path("shaders/axis_vs.glsl"),
-                get_program_path("shaders/axis_fs.glsl"),
+                get_program_path("shaders/deferred_vs.glsl"),
+                get_program_path("shaders/deferred_fs.glsl"),
             );
+
             self.sprite_program = load_program(
                 get_program_path("shaders/sprite_2_vs.glsl"),
                 get_program_path("shaders/sprite_fs.glsl"),
@@ -134,6 +162,23 @@ impl Shaders {
             self.debug_program = load_program(
                 get_program_path("shaders/debug_vs.glsl"),
                 get_program_path("shaders/debug_fs.glsl"),
+            );
+
+            self.copy_program = load_program(
+                get_program_path("shaders/copy-vs.glsl"),
+                get_program_path("shaders/copy-fs.glsl"),
+            );
+            self.particle_program = load_program(
+                get_program_path("shaders/particle_vs.glsl"),
+                get_program_path("shaders/particle_fs.glsl"),
+            );
+            self.ambient_program = load_program(
+                get_program_path("shaders/copy-vs.glsl"),
+                get_program_path("shaders/ambient_light_fs.glsl"),
+            );
+            self.directional_program = load_program(
+                get_program_path("shaders/copy-vs.glsl"),
+                get_program_path("shaders/directional_light_fs.glsl"),
             );
         }
     }

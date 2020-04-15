@@ -75,8 +75,9 @@ pub fn update_debug_components(world: &mut hecs::World, physics: &PhysicWorld) {
         if world.get::<DebugRender>(e).is_err() {
             // add component to entity.
             if let Some(shape) = physics.get_shape(rb.handle.unwrap()) {
-                let Shape::AABB(extends) = shape;
-                to_add.push((e, extends));
+                if let Shape::AABB(extends) = shape {
+                    to_add.push((e, extends));
+                }
             }
         }
     }

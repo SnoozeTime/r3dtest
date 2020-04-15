@@ -15,6 +15,7 @@ pub enum GameEvent {
 
     EntityShot {
         entity: Entity,
+        dir: glam::Vec3, // from where the shot came
     },
     Delete(Entity),
 

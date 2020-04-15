@@ -1,9 +1,10 @@
 [
+
     (
         transform: Some((
-            translation: (0, 2, -2),
-            scale: (1, 1, 1),
-            rotation: (0, 0, 0, 1),
+            translation: (15, 2, -3),
+            scale: (2, 0.1, 5),
+            rotation: (0, 0, 0.19866933, 0.9800666),
         )),
         render: Some((
             mesh: "cube",
@@ -11,11 +12,41 @@
         )),
         rigid_body: Some((
             mass: 10,
-            shape: AABB((1, 1, 1)),
+            shape: AABB((2, 0.1, 5)),
             ty: Static,
+            max_linear_velocity: 20.0,
+            max_angular_velocity: 20.0,
+
         )),
         color: Some((
-            r: 212,
+            r: 0,
+            g: 80,
+            b: 121,
+        )),
+        health: Some((
+            current: 2,
+            max: 2,
+        )),
+    ),
+
+    (
+        transform: Some((
+            translation: (5, 2, -2),
+            scale: (1, 1, 1),
+            rotation: (0, 0, 0, 1),
+        )),
+        render: Some((
+            mesh: "ramp",
+            enabled: true,
+        )),
+        rigid_body: Some((
+            mass: 10,
+            shape: ConvexHull,
+            ty: Static,
+            max_linear_velocity: 20.0,
+        )),
+        color: Some((
+            r: 0,
             g: 80,
             b: 121,
         )),
@@ -187,5 +218,40 @@
             },
             current_animation: Some("walk_forward")
         ))
-    )
+    ),
+    (
+        particle: Some((
+            position: (1, 1, 1),
+            velocity: (0, 2, 0),
+            particle_number: 100,
+            color: (
+                r: 234,
+                g: 0,
+                b: 0,
+            )
+        )),
+    ),
+    (
+       ambient_light: Some((
+           color: (
+               r: 255,
+               g: 255,
+               b: 255,
+           ),
+           intensity: 0.7
+           )
+       )
+   ),
+   (
+        directional_light: Some((
+        color: (
+           r: 255,
+           g: 255,
+           b: 255,
+       ),
+       intensity: 0.7,
+       direction: (5, -2, 5)
+
+        ))
+   )
 ]

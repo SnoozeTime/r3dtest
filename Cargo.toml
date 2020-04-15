@@ -45,8 +45,9 @@ glyph_brush = "0.6.3"
 # Physics from the community :)
 nalgebra   = "0.18"
 ncollide3d = "0.20"
-nphysics3d = "0.12"
+nphysics3d = { path = "../nphysics/build/nphysics3d"}
 
+rand = "0.7.3"
 [dependencies.glam]
 version = "0.8.4"
 features = ["serde"]
