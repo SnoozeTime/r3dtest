@@ -267,7 +267,7 @@ snapshot! {
 #[derive(Default)]
 pub struct Applier {
     /// Entity number on the server will not match the client's entity number...
-    server_to_local_entity: HashMap<u64, Entity>,
+    pub(crate) server_to_local_entity: HashMap<u64, Entity>,
 }
 
 use std::fmt::Debug;

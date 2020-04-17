@@ -1,6 +1,6 @@
 use super::sprite;
 use crate::render::lighting::{
-    AmbientLightProgram, AmbientShaderInterface, DirectionalLightProgram,
+    AmbientLightProgram, AmbientShaderInterface, DirectionalLightProgram, PointLightProgram,
 };
 use crate::render::particle::ParticleShaderInterface;
 use crate::render::{billboard, debug, text, VertexSementics};
@@ -39,6 +39,9 @@ pub struct AxisShaderInterface {
 
     #[uniform(unbound)]
     pub color: Uniform<[f32; 3]>,
+
+    #[uniform(unbound)]
+    pub emissive: Uniform<[f32; 3]>,
 }
 
 pub struct Shaders {
@@ -51,6 +54,7 @@ pub struct Shaders {
     pub particle_program: Program<(), (), ParticleShaderInterface>,
     pub ambient_program: AmbientLightProgram,
     pub directional_program: DirectionalLightProgram,
+    pub point_light_program: PointLightProgram,
     rx: Receiver<Result<notify::Event, notify::Error>>,
     _watcher: RecommendedWatcher,
 }
@@ -100,6 +104,10 @@ impl Shaders {
             get_program_path("shaders/copy-vs.glsl"),
             get_program_path("shaders/directional_light_fs.glsl"),
         );
+        let point_light_program = load_program(
+            get_program_path("shaders/copy-vs.glsl"),
+            get_program_path("shaders/point_light_fs.glsl"),
+        );
         let (tx, rx) = std::sync::mpsc::channel();
 
         // Add a path to be watched. All files and directories at that path and
@@ -124,6 +132,7 @@ impl Shaders {
             particle_program,
             ambient_program,
             directional_program,
+            point_light_program,
             rx,
             _watcher: watcher,
         }
@@ -179,6 +188,10 @@ impl Shaders {
             self.directional_program = load_program(
                 get_program_path("shaders/copy-vs.glsl"),
                 get_program_path("shaders/directional_light_fs.glsl"),
+            );
+            self.point_light_program = load_program(
+                get_program_path("shaders/copy-vs.glsl"),
+                get_program_path("shaders/point_light_fs.glsl"),
             );
         }
     }

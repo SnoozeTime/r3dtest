@@ -48,6 +48,11 @@ ncollide3d = "0.20"
 nphysics3d = { path = "../nphysics/build/nphysics3d"}
 
 rand = "0.7.3"
+
+# For the RON editor.
+iced = "0.1"
+async-std = "1.0"
+
 [dependencies.glam]
 version = "0.8.4"
 features = ["serde"]

@@ -1,5 +1,5 @@
 #![allow(unused)]
-use super::Transform;
+use super::{Name, Transform};
 use crate::animation::AnimationController;
 use crate::camera::{Camera, LookAt};
 use crate::colors::RgbColor;
@@ -11,7 +11,7 @@ use crate::physics::RigidBody;
 use crate::render::{
     billboard::Billboard,
     debug::DebugRender,
-    lighting::{AmbientLight, DirectionalLight},
+    lighting::{AmbientLight, DirectionalLight, Emissive, PointLight},
     particle::ParticleEmitter,
     sprite::{ScreenPosition, SpriteRender},
     Render,
@@ -59,9 +59,10 @@ macro_rules! serialize {
             Ok(world)
         }
 
-        pub fn add_to_world(world: &mut World, serialized_entities: Vec<SerializedEntity>) {
+        pub fn add_to_world(world: &mut World, serialized_entities: Vec<SerializedEntity>) -> Vec<hecs::Entity> {
 
             let mut builder = hecs::EntityBuilder::new();
+            let mut entities = vec![];
             for e in serialized_entities {
 
                 $(
@@ -70,8 +71,9 @@ macro_rules! serialize {
                     }
                 )+
 
-                world.spawn(builder.build());
+                entities.push(world.spawn(builder.build()));
             }
+            entities
         }
 
         pub fn spawn_entity(world: &mut World, serialized: &SerializedEntity) -> hecs::Entity {
@@ -142,5 +144,8 @@ serialize! {
     (pickup, PickUp),
     (particle, ParticleEmitter),
     (ambient_light, AmbientLight),
-    (directional_light, DirectionalLight)
+    (directional_light, DirectionalLight),
+    (emissive, Emissive),
+    (point_light, PointLight),
+    (name, Name)
 }

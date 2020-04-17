@@ -14,13 +14,6 @@ uniform float intensity;
 out vec4 f_color;
 
 void main() {
-//    float in_depth = texture(depth, v_uv).r;
-//    // Any depth superior or equal to 1.0 means that the pixel has been untouched by the deferred
-//    // pass. We don't want to deal with them.
-//    if (in_depth >= 1.0) {
-//        return;
-//    }
-
     vec3 norm = normalize(texture(normal, v_uv).rgb);
     vec3 lightDir = normalize(direction.xyz);
     float diff = max(dot(norm, lightDir), 0.0);

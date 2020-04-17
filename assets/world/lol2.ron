@@ -1,10 +1,9 @@
 [
-
     (
         transform: Some((
-            translation: (15, 2, -3),
+            translation: (10, 2, -3),
             scale: (2, 0.1, 5),
-            rotation: (0, 0, 0.19866933, 0.9800666),
+            rotation: (0, 0.47942555, 0, 0.87758255),
         )),
         render: Some((
             mesh: "cube",
@@ -14,9 +13,9 @@
             mass: 10,
             shape: AABB((2, 0.1, 5)),
             ty: Static,
-            max_linear_velocity: 20.0,
-            max_angular_velocity: 20.0,
-
+            max_linear_velocity: 20,
+            max_angular_velocity: 20,
+            linear_damping: 0,
         )),
         color: Some((
             r: 0,
@@ -24,14 +23,34 @@
             b: 121,
         )),
         health: Some((
-            current: 2,
-            max: 2,
+            current: 4,
+            max: 4,
+        )),
+        emissive: Some((
+            color: (
+                r: 0,
+                g: 80,
+                b: 121,
+            ),
         )),
     ),
-
     (
         transform: Some((
-            translation: (5, 2, -2),
+            translation: (5, 0.1, -7),
+            scale: (1, 1, 1),
+            rotation: (0, 0, 0, 1),
+        )),
+        point_light: Some((
+            color: (
+                r: 255,
+                g: 255,
+                b: 255,
+            ),
+        )),
+    ),
+    (
+        transform: Some((
+            translation: (4, 2, -2),
             scale: (1, 1, 1),
             rotation: (0, 0, 0, 1),
         )),
@@ -43,7 +62,9 @@
             mass: 10,
             shape: ConvexHull,
             ty: Static,
-            max_linear_velocity: 20.0,
+            max_linear_velocity: 20,
+            max_angular_velocity: 0,
+            linear_damping: 0,
         )),
         color: Some((
             r: 0,
@@ -55,28 +76,30 @@
             max: 2,
         )),
     ),
-
     (
         transform: Some((
             translation: (5, 0.5, -4),
             scale: (0.5, 1, 0.5),
             rotation: (0, 0, 0, 1),
         )),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
         rigid_body: Some((
             mass: 10,
             shape: AABB((0.5, 1, 0.5)),
             ty: Kinematic,
-        )),
-        pickup: Some(Gun(Shotgun)),
-        render: Some((
-            mesh: "cube",
-            enabled: true,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
         )),
         color: Some((
             r: 110,
             g: 87,
             b: 115,
         )),
+        pickup: Some(Gun(Shotgun)),
     ),
     (
         transform: Some((
@@ -84,42 +107,48 @@
             scale: (0.5, 1, 0.5),
             rotation: (0, 0, 0, 1),
         )),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
         rigid_body: Some((
             mass: 10,
             shape: AABB((0.5, 1, 0.5)),
             ty: Kinematic,
-        )),
-        pickup: Some(Ammo(Shotgun)),
-        render: Some((
-            mesh: "cube",
-            enabled: true,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
         )),
         color: Some((
             r: 0,
             g: 0,
             b: 0,
         )),
+        pickup: Some(Ammo(Shotgun)),
     ),
     (
-    transform: Some((
-        translation: (5, -5, 2),
-        scale: (50, 5, 20),
-        rotation: (0, 0, 0, 1),
-    )),
-    render: Some((
-        mesh: "cube",
-        enabled: true,
-    )),
-    rigid_body: Some((
-        mass: 100,
-        shape: AABB((50, 5, 20)),
-        ty: Static,
-    )),
-    color: Some((
-        r: 110,
-        g: 87,
-        b: 115,
-    )),
+        transform: Some((
+            translation: (5, -5, 2),
+            scale: (50, 5, 20),
+            rotation: (0, 0, 0, 1),
+        )),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
+        rigid_body: Some((
+            mass: 100,
+            shape: AABB((50, 5, 20)),
+            ty: Static,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
+        )),
+        color: Some((
+            r: 110,
+            g: 87,
+            b: 115,
+        )),
     ),
     (
         transform: Some((
@@ -141,7 +170,7 @@
         transform: Some((
             translation: (0, 2, 0),
             scale: (1, 1, 1),
-            rotation: (0, 0, 0.70710677, 0.70710677),
+            rotation: (0.7069847, 0, 0, 0.70722884),
         )),
         render: Some((
             mesh: "axis",
@@ -157,7 +186,7 @@
         transform: Some((
             translation: (0, 2, 0),
             scale: (1, 1, 1),
-            rotation: (0, -0.70710677, 0, 0.70710677),
+            rotation: (0, 0, -0.70698476, 0.70722884),
         )),
         render: Some((
             mesh: "axis",
@@ -175,14 +204,17 @@
             scale: (15, 3, 1),
             rotation: (0, 0, 0, 1),
         )),
+        render: Some((
+            mesh: "cube",
+            enabled: true,
+        )),
         rigid_body: Some((
             mass: 1,
             shape: AABB((15, 3, 1)),
             ty: Static,
-        )),
-        render: Some((
-            mesh: "cube",
-            enabled: true,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
         )),
         color: Some((
             r: 234,
@@ -196,28 +228,38 @@
             scale: (0.53, 1, 1),
             rotation: (0, 0, 0, 1),
         )),
-        billboard: Some((
-            texture: "soldier",
-            sprite_nb: 0,
-            enabled: true,
-        )),
         animation: Some((
             animations: {
                 "walk_backward": (
-                    keyframes: [(0, 10), (1, 10), (2, 10), (3, 10)],
+                    keyframes: [
+                        (0, 10),
+                        (1, 10),
+                        (2, 10),
+                        (3, 10),
+                    ],
                     single: false,
                     current_index: 0,
-                    elapsed_frame: 0
+                    elapsed_frame: 0,
                 ),
                 "walk_forward": (
-                    keyframes: [(4, 10), (5, 10), (6, 10), (7, 10)],
+                    keyframes: [
+                        (4, 10),
+                        (5, 10),
+                        (6, 10),
+                        (7, 10),
+                    ],
                     single: false,
                     current_index: 0,
-                    elapsed_frame: 0
-                )
+                    elapsed_frame: 0,
+                ),
             },
-            current_animation: Some("walk_forward")
-        ))
+            current_animation: Some("walk_forward"),
+        )),
+        billboard: Some((
+            texture: "soldier",
+            enabled: true,
+            sprite_nb: 0,
+        )),
     ),
     (
         particle: Some((
@@ -228,30 +270,29 @@
                 r: 234,
                 g: 0,
                 b: 0,
-            )
+            ),
+            life: None,
         )),
     ),
     (
-       ambient_light: Some((
-           color: (
-               r: 255,
-               g: 255,
-               b: 255,
-           ),
-           intensity: 0.7
-           )
-       )
-   ),
-   (
+        ambient_light: Some((
+            color: (
+                r: 255,
+                g: 220,
+                b: 133,
+            ),
+            intensity: 0.8,
+        )),
+    ),
+    (
         directional_light: Some((
-        color: (
-           r: 255,
-           g: 255,
-           b: 255,
-       ),
-       intensity: 0.7,
-       direction: (5, -2, 5)
-
-        ))
-   )
+            direction: (1, -2, 5),
+            color: (
+                r: 255,
+                g: 255,
+                b: 255,
+            ),
+            intensity: 0.7,
+        )),
+    ),
 ]

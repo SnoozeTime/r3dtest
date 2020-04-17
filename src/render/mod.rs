@@ -26,7 +26,7 @@ use crate::net::snapshot::Deltable;
 use crate::render::assets::AssetManager;
 use crate::render::billboard::BillboardRenderer;
 use crate::render::debug::DebugRenderer;
-use crate::render::lighting::LightingSystem;
+use crate::render::lighting::{Emissive, LightingSystem};
 use crate::render::particle::ParticleSystem;
 use crate::render::shaders::Shaders;
 use crate::render::sprite::SpriteRenderer;
@@ -105,7 +105,13 @@ const FOVY: f32 = std::f32::consts::PI / 2.;
 const Z_NEAR: f32 = 0.1;
 const Z_FAR: f32 = 100.;
 
-pub type OffscreenBuffer = Framebuffer<Dim2, (RGBA32F, RGBA32F), Depth32F>;
+/// Offscreen buffer for deferred rendering:
+/// 1. Diffuse buffer,
+/// 2. normal buffer
+/// 3. Emissive light buffer (for glow).
+/// 4. fragment world position
+pub type OffscreenBuffer = Framebuffer<Dim2, (RGBA32F, RGBA32F, RGBA32F, RGBA32F), Depth32F>;
+
 pub struct Renderer {
     sprite_renderer: SpriteRenderer,
     text_renderer: TextRenderer,
@@ -251,8 +257,9 @@ impl Renderer {
                 shd_gate.shade(&self.shaders.regular_program, |iface, mut rdr_gate| {
                     iface.projection.update(self.projection.to_cols_array_2d());
                     iface.view.update(self.view.to_cols_array_2d());
-                    for (e, (transform, mesh_name, color)) in
-                        world.query::<(&Transform, &Render, &RgbColor)>().iter()
+                    for (e, (transform, mesh_name, color, emissive)) in world
+                        .query::<(&Transform, &Render, &RgbColor, Option<&Emissive>)>()
+                        .iter()
                     {
                         if !mesh_name.enabled {
                             continue;
@@ -260,6 +267,12 @@ impl Renderer {
 
                         if let Ok(_) = world.get::<MainPlayer>(e) {
                             continue; // do not render yourself.
+                        }
+
+                        if let Some(em) = emissive {
+                            iface.emissive.update(em.color.to_normalized());
+                        } else {
+                            iface.emissive.update([0.0, 0.0, 0.0]);
                         }
 
                         rdr_gate.render(&RenderState::default(), |mut tess_gate| {
@@ -305,7 +318,7 @@ impl Renderer {
                     &self.shaders,
                 );
                 //                // we must bind the offscreen framebuffer color content so that we can pass it to a shader
-                //                let bound_texture = pipeline.bind_texture(&self.offscreen_buffer.color_slot().0);
+                //                let bound_texture = pipeline.bind_texture(&self.offscreen_buffer.color_slot().3);
                 //
                 //                shd_gate.shade(&self.shaders.copy_program, |iface, mut rdr_gate| {
                 //                    iface.source_texture.update(&bound_texture);

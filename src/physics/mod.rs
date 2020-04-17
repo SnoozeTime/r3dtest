@@ -59,6 +59,19 @@ pub struct RigidBody {
     pub handle: Option<BodyIndex>,
 }
 
+impl Default for RigidBody {
+    fn default() -> Self {
+        Self {
+            mass: 1.0,
+            shape: Shape::AABB(glam::Vec3::one()),
+            ty: BodyType::Static,
+            max_angular_velocity: 0.0,
+            max_linear_velocity: 0.0,
+            linear_damping: 0.0,
+            handle: None,
+        }
+    }
+}
 #[derive(Default)]
 pub struct BodyToEntity(HashMap<BodyIndex, Entity>);
 
@@ -332,6 +345,22 @@ impl PhysicWorld {
             if let Some(rb) = body.downcast_mut::<nphysics3d::object::RigidBody<f32>>() {
                 rb.set_linear_damping(friction);
             }
+        }
+    }
+
+    pub fn deactivate_body(&mut self, h: BodyIndex) {
+        if let Some(body) = self.bodies.get_mut(h.0) {
+            body.deactivate();
+        }
+    }
+
+    pub fn activate_body(&mut self, h: BodyIndex, ty: BodyType) {
+        if let Some(body) = self.bodies.get_mut(h.0) {
+            body.set_status(match ty {
+                BodyType::Static => BodyStatus::Static,
+                BodyType::Dynamic => BodyStatus::Dynamic,
+                BodyType::Kinematic => BodyStatus::Kinematic,
+            });
         }
     }
 

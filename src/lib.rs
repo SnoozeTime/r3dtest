@@ -4,6 +4,7 @@ pub mod collections;
 pub mod colors;
 pub mod controller;
 pub mod ecs;
+pub mod editor;
 pub mod event;
 pub mod gameplay;
 pub mod input;

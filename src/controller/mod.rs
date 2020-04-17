@@ -13,6 +13,7 @@ use serde_derive::{Deserialize, Serialize};
 use shrev::EventChannel;
 pub mod client;
 pub mod fps;
+pub mod free;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Fps {
