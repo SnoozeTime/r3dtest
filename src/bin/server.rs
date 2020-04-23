@@ -100,7 +100,7 @@ fn main() {
         let new_time = Instant::now();
         let frame_time = new_time - current_time;
         current_time = new_time;
-        physics.step(frame_time.as_secs_f32());
+        physics.step();
 
         // Update the positions.
         for (_, (mut t, rb)) in world.query::<(&mut Transform, &RigidBody)>().iter() {

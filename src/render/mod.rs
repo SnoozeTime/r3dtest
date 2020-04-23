@@ -13,8 +13,10 @@ pub mod assets;
 pub mod billboard;
 pub mod debug;
 pub mod lighting;
+pub mod mesh;
 pub mod particle;
 pub mod shaders;
+pub mod skybox;
 pub mod sprite;
 pub mod text;
 use crate::camera::Camera;
@@ -27,8 +29,11 @@ use crate::render::assets::AssetManager;
 use crate::render::billboard::BillboardRenderer;
 use crate::render::debug::DebugRenderer;
 use crate::render::lighting::{Emissive, LightingSystem};
+use crate::render::mesh::deferred::DeferredRenderer;
+use crate::render::mesh::GltfSceneRenderer;
 use crate::render::particle::ParticleSystem;
 use crate::render::shaders::Shaders;
+use crate::render::skybox::SkyboxRenderer;
 use crate::render::sprite::SpriteRenderer;
 use crate::render::text::TextRenderer;
 use crate::resources::Resources;
@@ -119,6 +124,8 @@ pub struct Renderer {
     debug_renderer: DebugRenderer,
     particle_renderer: ParticleSystem,
     light_renderer: LightingSystem,
+    skybox_renderer: SkyboxRenderer,
+    deferred_pbr_renderer: DeferredRenderer,
     backbuffer: Framebuffer<Dim2, (), ()>,
     quad: Tess,
     offscreen_buffer: OffscreenBuffer,
@@ -134,16 +141,34 @@ pub struct Renderer {
     debug: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RenderConfig {
+    sky_color: RgbColor,
+}
+
+impl Default for RenderConfig {
+    fn default() -> Self {
+        Self {
+            sky_color: RgbColor::new(0, 0, 0),
+        }
+    }
+}
+
 impl Renderer {
     pub fn new(surface: &mut GlfwSurface, resources: &mut Resources) -> Self {
+        let render_config = resources
+            .fetch::<RenderConfig>()
+            .and_then(|f| Some((*f).clone()))
+            .unwrap_or_default();
         let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(DEJA_VU).build();
-
+        let deferred_pbr_renderer = DeferredRenderer::new(surface);
         let particle_renderer = ParticleSystem::new(surface);
         let sprite_renderer = SpriteRenderer::new(surface);
         let billboard_renderer = BillboardRenderer::new(surface);
         let text_renderer = TextRenderer::new(surface, &mut glyph_brush);
         let debug_renderer = DebugRenderer::new(surface);
         let light_renderer = LightingSystem::new(surface);
+        let skybox_renderer = SkyboxRenderer::new(surface, render_config.sky_color);
         let backbuffer = surface.back_buffer().unwrap();
         let rdr_id = {
             let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
@@ -176,6 +201,8 @@ impl Renderer {
             text_renderer,
             debug_renderer,
             light_renderer,
+            deferred_pbr_renderer,
+            skybox_renderer,
             backbuffer,
             offscreen_buffer,
             shaders,
@@ -199,6 +226,7 @@ impl Renderer {
         for (_, (t, c)) in world.query::<(&Transform, &Camera)>().iter() {
             if c.active {
                 self.view = c.get_view(t.translation);
+                info!("Update view matrix = {:?}", self.view);
             }
         }
     }
@@ -206,6 +234,10 @@ impl Renderer {
     pub fn update_text(&mut self, surface: &mut GlfwSurface, world: &World) {
         self.text_renderer
             .update_text(surface, world, &mut self.glyph_brush);
+    }
+
+    pub fn next_blending_mod_lighting(&mut self) {
+        self.deferred_pbr_renderer.next_blending_mode();
     }
 
     pub fn check_updates(
@@ -250,59 +282,66 @@ impl Renderer {
 
         // I - FIRST RENDER THE DIFFUSE/DEPTH TO OFFSCREEN BUFFER
         // =========================================================================================
-        surface.pipeline_builder().pipeline(
-            &self.offscreen_buffer,
-            &PipelineState::default().set_clear_color(color),
-            |pipeline, mut shd_gate| {
-                shd_gate.shade(&self.shaders.regular_program, |iface, mut rdr_gate| {
-                    iface.projection.update(self.projection.to_cols_array_2d());
-                    iface.view.update(self.view.to_cols_array_2d());
-                    for (e, (transform, mesh_name, color, emissive)) in world
-                        .query::<(&Transform, &Render, &RgbColor, Option<&Emissive>)>()
-                        .iter()
-                    {
-                        if !mesh_name.enabled {
-                            continue;
-                        }
-
-                        if let Ok(_) = world.get::<MainPlayer>(e) {
-                            continue; // do not render yourself.
-                        }
-
-                        if let Some(em) = emissive {
-                            iface.emissive.update(em.color.to_normalized());
-                        } else {
-                            iface.emissive.update([0.0, 0.0, 0.0]);
-                        }
-
-                        rdr_gate.render(&RenderState::default(), |mut tess_gate| {
-                            iface.model.update(transform.to_model().to_cols_array_2d());
-                            iface.color.update(color.to_normalized());
-                            let mesh = assets.meshes.get(&mesh_name.mesh).unwrap();
-                            tess_gate.render(mesh.slice(..));
-                        });
-                    }
-                });
-
-                self.particle_renderer.render(
-                    &self.projection,
-                    &self.view,
-                    &mut shd_gate,
-                    world,
-                    &self.shaders,
-                );
-
-                self.billboard_renderer.render(
-                    &self.projection,
-                    &self.view,
-                    &pipeline,
-                    &mut shd_gate,
-                    world,
-                    &assets.sprites,
-                    &self.shaders,
-                );
-            },
+        self.deferred_pbr_renderer.render_offscreen(
+            surface,
+            &self.projection,
+            &self.view,
+            world,
+            &self.shaders,
         );
+        //        surface.pipeline_builder().pipeline(
+        //            &self.offscreen_buffer,
+        //            &PipelineState::default().set_clear_color(color),
+        //            |pipeline, mut shd_gate| {
+        //                shd_gate.shade(&self.shaders.regular_program, |iface, mut rdr_gate| {
+        //                    iface.projection.update(self.projection.to_cols_array_2d());
+        //                    iface.view.update(self.view.to_cols_array_2d());
+        //                    for (e, (transform, mesh_name, color, emissive)) in world
+        //                        .query::<(&Transform, &Render, &RgbColor, Option<&Emissive>)>()
+        //                        .iter()
+        //                    {
+        //                        if !mesh_name.enabled {
+        //                            continue;
+        //                        }
+        //
+        //                        if let Ok(_) = world.get::<MainPlayer>(e) {
+        //                            continue; // do not render yourself.
+        //                        }
+        //
+        //                        if let Some(em) = emissive {
+        //                            iface.emissive.update(em.color.to_normalized());
+        //                        } else {
+        //                            iface.emissive.update([0.0, 0.0, 0.0]);
+        //                        }
+        //
+        //                        rdr_gate.render(&RenderState::default(), |mut tess_gate| {
+        //                            iface.model.update(transform.to_model().to_cols_array_2d());
+        //                            iface.color.update(color.to_normalized());
+        //                            let mesh = assets.meshes.get(&mesh_name.mesh).unwrap();
+        //                            tess_gate.render(mesh.slice(..));
+        //                        });
+        //                    }
+        //                });
+        //
+        //                self.particle_renderer.render(
+        //                    &self.projection,
+        //                    &self.view,
+        //                    &mut shd_gate,
+        //                    world,
+        //                    &self.shaders,
+        //                );
+        //
+        //                self.billboard_renderer.render(
+        //                    &self.projection,
+        //                    &self.view,
+        //                    &pipeline,
+        //                    &mut shd_gate,
+        //                    world,
+        //                    &assets.sprites,
+        //                    &self.shaders,
+        //                );
+        //            },
+        //        );
 
         // II - Render to screen !
         // =========================================================================================
@@ -317,17 +356,14 @@ impl Renderer {
                     &self.offscreen_buffer,
                     &self.shaders,
                 );
-                //                // we must bind the offscreen framebuffer color content so that we can pass it to a shader
-                //                let bound_texture = pipeline.bind_texture(&self.offscreen_buffer.color_slot().3);
-                //
-                //                shd_gate.shade(&self.shaders.copy_program, |iface, mut rdr_gate| {
-                //                    iface.source_texture.update(&bound_texture);
-                //                    rdr_gate.render(&RenderState::default(), |mut tess_gate| {
-                //                        // this will render the attributeless quad with the offscreen framebuffer color slot
-                //                        // bound for the shader to fetch from
-                //                        tess_gate.render(&self.quad);
-                //                    });
-                //                });
+                //                self.skybox_renderer.render(
+                //                    &pipeline,
+                //                    &mut shd_gate,
+                //                    &self.offscreen_buffer,
+                //                    &self.shaders,
+                //                );
+                self.deferred_pbr_renderer
+                    .render(&pipeline, &mut shd_gate, &self.shaders);
 
                 if self.debug {
                     self.debug_renderer.render(
@@ -354,7 +390,5 @@ impl Renderer {
                 }
             },
         );
-        // swap buffer chain
-        surface.swap_buffers();
     }
 }

@@ -5,6 +5,7 @@ use crate::gameplay::gun::{Gun, GunSlot};
 use crate::gameplay::player::{MainPlayer, Player, PlayerState};
 use crate::input::Input;
 use crate::resources::Resources;
+use log::info;
 use luminance_glfw::{Action, Key, MouseButton};
 use serde_derive::{Deserialize, Serialize};
 use shrev::EventChannel;
@@ -96,6 +97,7 @@ impl ClientController {
 
                 // orientation of camera.
                 if let Some((offset_x, offset_y)) = input.mouse_delta {
+                    info!("Apply mouse delta {} {}", offset_x, offset_y);
                     apply_delta_dir(offset_x, offset_y, camera, fps.sensitivity);
                     commands.push(ClientCommand::LookAt(camera.pitch, camera.yaw));
                 }
@@ -155,6 +157,9 @@ fn apply_delta_dir(offset_x: f32, offset_y: f32, camera: &mut Camera, sensitivit
     if camera.pitch <= -89.0 {
         camera.pitch = -89.0;
     }
+
+    info!("new yaw is {}", camera.yaw);
+    info!("new pitch is {}", camera.pitch);
 
     camera.compute_vectors();
 }

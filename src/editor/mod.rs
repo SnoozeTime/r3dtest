@@ -623,7 +623,7 @@ impl EditorComponent for TransformEditor {
             .push(
                 self.scale_editor
                     .view(self.transform.scale)
-                    .map(|e| TransformMessage::TranslationChange(e)),
+                    .map(|e| TransformMessage::ScaleChange(e)),
             )
             .push(
                 self.rotation_editor

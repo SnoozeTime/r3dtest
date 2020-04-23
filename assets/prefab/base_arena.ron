@@ -1,0 +1,114 @@
+[
+(
+        transform: Some((
+            translation: (0, 0, 0),
+            scale: (3, 1, 3),
+            rotation: (0, 0, 0, 1),
+        )),
+        render: Some((
+            mesh: "arena",
+            enabled: true,
+        )),
+        rigid_body: Some((
+            mass: 100,
+            shape: AABB((30, 1, 30)),
+            ty: Static,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
+        )),
+        color: Some((
+            r: 110,
+            g: 87,
+            b: 115,
+        )),
+    ),
+    // wall X+ for the arena
+    (
+
+        transform: Some((
+            translation: (30, 0, 0),
+            scale: (2, 1, 30),
+            rotation: (0, 0, 0, 1),
+        )),
+        rigid_body: Some((
+            mass: 100,
+            shape: AABB((2, 10, 30)),
+            ty: Static,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
+        )),
+        color: Some((
+            r: 110,
+            g: 87,
+            b: 115,
+        )),
+    ),
+    // wall X- for the arena
+    (
+
+        transform: Some((
+            translation: (-30, 0, 0),
+            scale: (2, 1, 30),
+            rotation: (0, 0, 0, 1),
+        )),
+        rigid_body: Some((
+            mass: 100,
+            shape: AABB((2, 10, 30)),
+            ty: Static,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
+        )),
+        color: Some((
+            r: 110,
+            g: 87,
+            b: 115,
+        )),
+    ),
+    // wall Z+ for the arena
+    (
+
+        transform: Some((
+            translation: (0, 0, 30),
+            scale: (30, 1, 2),
+            rotation: (0, 0, 0, 1),
+        )),
+        rigid_body: Some((
+            mass: 100,
+            shape: AABB((30, 10, 2)),
+            ty: Static,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
+        )),
+        color: Some((
+            r: 110,
+            g: 87,
+            b: 115,
+        )),
+    ),
+    // wall Z- for the arena
+    (
+
+        transform: Some((
+            translation: (0, 0, -30),
+            scale: (30, 1, 2),
+            rotation: (0, 0, 0, 1),
+        )),
+        rigid_body: Some((
+            mass: 100,
+            shape: AABB((30, 10, 2)),
+            ty: Static,
+            max_linear_velocity: 0,
+            max_angular_velocity: 0,
+            linear_damping: 0,
+        )),
+        color: Some((
+            r: 110,
+            g: 87,
+            b: 115,
+        )),
+    )
+]

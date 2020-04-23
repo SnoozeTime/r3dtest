@@ -1,8 +1,8 @@
 use super::sprite;
-use crate::render::lighting::{
-    AmbientLightProgram, AmbientShaderInterface, DirectionalLightProgram, PointLightProgram,
-};
+use crate::render::lighting::{AmbientLightProgram, DirectionalLightProgram, PointLightProgram};
+use crate::render::mesh::deferred::{PbrLightingProgram, PbrOffscreenProgram, PbrToScreenProgram};
 use crate::render::particle::ParticleShaderInterface;
+use crate::render::skybox::SkyboxProgram;
 use crate::render::{billboard, debug, text, VertexSementics};
 use luminance::linear::M44;
 use luminance::shader::program::{Program, Uniform, UniformInterface};
@@ -19,10 +19,19 @@ where
     S: Semantics,
     U: UniformInterface,
 {
-    let vs = fs::read_to_string(vs_path).unwrap();
-    let fs = fs::read_to_string(fs_path).unwrap();
+    let vs = fs::read_to_string(vs_path.as_ref())
+        .unwrap_or_else(|_| panic!("{:?}", vs_path.as_ref().display()));
+    let fs = fs::read_to_string(fs_path.as_ref())
+        .unwrap_or_else(|_| panic!("{:?}", fs_path.as_ref().display()));
     Program::from_strings(None, &vs, None, &fs)
-        .unwrap()
+        .unwrap_or_else(|e| {
+            panic!(
+                "Shader compilation error for {:?}/{:?} = {:?}",
+                vs_path.as_ref().display(),
+                fs_path.as_ref().display(),
+                e
+            )
+        })
         .ignore_warnings()
 }
 
@@ -46,6 +55,7 @@ pub struct AxisShaderInterface {
 
 pub struct Shaders {
     pub regular_program: Program<VertexSementics, (), AxisShaderInterface>,
+    pub scene_program: super::mesh::DeferredSceneProgram,
     pub sprite_program: Program<sprite::VertexSementics, (), sprite::ShaderInterface>,
     pub text_program: Program<text::VertexSemantics, (), text::ShaderInterface>,
     pub billboard_program: Program<(), (), billboard::ShaderInterface>,
@@ -55,6 +65,13 @@ pub struct Shaders {
     pub ambient_program: AmbientLightProgram,
     pub directional_program: DirectionalLightProgram,
     pub point_light_program: PointLightProgram,
+    pub skybox_program: SkyboxProgram,
+
+    // deferred with PBR :)
+    pub pbr_offscreen_program: PbrOffscreenProgram,
+    pub pbr_light_offscreen_program: PbrLightingProgram,
+    pub pbr_light_program: PbrToScreenProgram,
+
     rx: Receiver<Result<notify::Event, notify::Error>>,
     _watcher: RecommendedWatcher,
 }
@@ -69,7 +86,10 @@ impl Shaders {
             get_program_path("shaders/deferred_vs.glsl"),
             get_program_path("shaders/deferred_fs.glsl"),
         );
-
+        let scene_program = load_program(
+            get_program_path("shaders/pbr/pbr_vs.glsl"),
+            get_program_path("shaders/pbr/pbr_fs.glsl"),
+        );
         let sprite_program = load_program(
             get_program_path("shaders/sprite_2_vs.glsl"),
             get_program_path("shaders/sprite_fs.glsl"),
@@ -108,6 +128,23 @@ impl Shaders {
             get_program_path("shaders/copy-vs.glsl"),
             get_program_path("shaders/point_light_fs.glsl"),
         );
+        let skybox_program = load_program(
+            get_program_path("shaders/copy-vs.glsl"),
+            get_program_path("shaders/skybox_fs.glsl"),
+        );
+
+        let pbr_offscreen_program = load_program(
+            get_program_path("shaders/pbr/pbr_deferred_vs.glsl"),
+            get_program_path("shaders/pbr/pbr_deferred_fs.glsl"),
+        );
+        let pbr_light_offscreen_program = load_program(
+            get_program_path("shaders/copy-vs.glsl"),
+            get_program_path("shaders/pbr/light_contribution_fs.glsl"),
+        );
+        let pbr_light_program = load_program(
+            get_program_path("shaders/copy-vs.glsl"),
+            get_program_path("shaders/pbr/total_light_fs.glsl"),
+        );
         let (tx, rx) = std::sync::mpsc::channel();
 
         // Add a path to be watched. All files and directories at that path and
@@ -125,6 +162,7 @@ impl Shaders {
         Self {
             regular_program,
             sprite_program,
+            scene_program,
             text_program,
             billboard_program,
             copy_program,
@@ -133,6 +171,10 @@ impl Shaders {
             ambient_program,
             directional_program,
             point_light_program,
+            skybox_program,
+            pbr_offscreen_program,
+            pbr_light_offscreen_program,
+            pbr_light_program,
             rx,
             _watcher: watcher,
         }
@@ -154,6 +196,11 @@ impl Shaders {
             self.regular_program = load_program(
                 get_program_path("shaders/deferred_vs.glsl"),
                 get_program_path("shaders/deferred_fs.glsl"),
+            );
+
+            self.scene_program = load_program(
+                get_program_path("shaders/scene_vs.glsl"),
+                get_program_path("shaders/scene_fs.glsl"),
             );
 
             self.sprite_program = load_program(
@@ -192,6 +239,10 @@ impl Shaders {
             self.point_light_program = load_program(
                 get_program_path("shaders/copy-vs.glsl"),
                 get_program_path("shaders/point_light_fs.glsl"),
+            );
+            self.skybox_program = load_program(
+                get_program_path("shaders/copy-vs.glsl"),
+                get_program_path("shaders/skybox_fs.glsl"),
             );
         }
     }

@@ -7,8 +7,6 @@ use log::{debug, error, info};
 use serde_derive::{Deserialize, Serialize};
 
 use luminance_windowing::CursorMode;
-use std::fs::{self};
-
 use r3dtest::animation::AnimationSystem;
 use r3dtest::controller::fps::FpsController;
 use r3dtest::controller::free::FreeController;
@@ -26,11 +24,13 @@ use r3dtest::gameplay::ui::UiSystem;
 use r3dtest::physics::{BodyToEntity, PhysicWorld};
 use r3dtest::render::assets::AssetManager;
 use r3dtest::render::debug::update_debug_components;
-use r3dtest::render::Renderer;
+use r3dtest::render::{RenderConfig, Renderer};
 use r3dtest::{
     ecs, ecs::Transform, event::GameEvent, input::Input, physics::RigidBody, resources::Resources,
 };
+use serde::de::DeserializeOwned;
 use shrev::EventChannel;
+use std::fs::{self};
 use std::thread;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -66,12 +66,30 @@ fn main() {
     info!("Hello, world!");
 }
 
+fn load_optional_config<T: DeserializeOwned + 'static>(path: &str, resources: &mut Resources) {
+    if let Ok(conf_str) = fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + path) {
+        let conf: Result<T, _> = ron::de::from_str(&conf_str);
+        if let Ok(conf) = conf {
+            resources.insert(conf);
+        } else {
+            error!("Found render config but could not deserialize it.");
+        }
+    } else {
+        info!("No config for Renderer. Will use default instead");
+        resources.insert(RenderConfig::default());
+    }
+}
+
 fn setup_resources() -> Resources {
     let mut resources = Resources::default();
     let event_channel: EventChannel<GameEvent> = EventChannel::new();
     resources.insert(event_channel);
     let input = Input::new();
     resources.insert(input);
+
+    // optional renderer config.
+    load_optional_config::<RenderConfig>("render.ron", &mut resources);
+
     resources
 }
 
@@ -118,7 +136,6 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
 
     let dt = Duration::from_millis(16);
 
-    let mut current_time = Instant::now();
     let client_controller = client::ClientController::get_offline_controller();
     //let mut fps_controller = FpsController::default();
 
@@ -130,7 +147,10 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         .map(|(e, _)| e)
         .next()
         .unwrap();
+    let mut current_time = Instant::now();
     'app: loop {
+        let start_of_frame = Instant::now();
+
         {
             let mut input = resources.fetch_mut::<Input>().unwrap();
             input.process_events(&mut surface);
@@ -144,6 +164,10 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
             if input.has_key_event_happened(Key::F2, Action::Press) {
                 // toggle controller.
                 toggle_controller(&mut controller_mode, player_entity, &world, &mut physics);
+            }
+
+            if input.has_key_event_happened(Key::F3, Action::Press) {
+                renderer.next_blending_mod_lighting();
             }
         }
 
@@ -167,10 +191,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         // PHYSIC SIMULATION
         // ----------------------------------------------------
 
-        let new_time = Instant::now();
-        let frame_time = new_time - current_time;
-        current_time = new_time;
-        physics.step(frame_time.as_secs_f32());
+        physics.step();
 
         // Update the positions.
         for (_, (mut t, rb)) in world.query::<(&mut Transform, &RigidBody)>().iter() {
@@ -206,12 +227,19 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         renderer.check_updates(&mut surface, &world, &resources);
 
         // FIXME
+
+        let end_of_frame = Instant::now() - start_of_frame;
+        let start_of_render = Instant::now();
+        surface.swap_buffers();
         let now = Instant::now();
         let frame_duration = now - current_time;
         if frame_duration < dt {
-            thread::sleep(dt - frame_duration);
+            //thread::sleep(dt - frame_duration);
         }
         current_time = now;
+
+        let end_of_frame = Instant::now() - start_of_render;
+        println!("Frame took {}ms after rendering", end_of_frame.as_millis());
     }
 }
 

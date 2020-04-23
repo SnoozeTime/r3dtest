@@ -186,8 +186,9 @@ impl Controller {
                 d.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
 
                 trace!("Raycast on_ground = {:?}", d);
-                if let Some((minimum_distance, _)) = d.pop() {
-                    if minimum_distance < 1.5 {
+                if let Some((minimum_distance, _)) = d.first() {
+                    trace!("Minimum distance = {}", minimum_distance);
+                    if *minimum_distance < 1.5 {
                         true
                     } else {
                         false

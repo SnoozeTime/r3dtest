@@ -1,4 +1,4 @@
-use log::info;
+use log::{error, info};
 use luminance_glfw::{Action, GlfwSurface, Key, MouseButton, Surface, WindowEvent};
 use std::collections::HashSet;
 
@@ -22,8 +22,7 @@ impl Input {
         }
     }
     pub fn process_events(&mut self, surface: &mut GlfwSurface) {
-        self.events.clear();
-        self.mouse_delta = None;
+        self.clear_events();
         for event in surface.poll_events() {
             if let WindowEvent::Focus(has_focus) = event {
                 info!(
@@ -36,6 +35,10 @@ impl Input {
                     // the previous mouse position is not valid anymore and if we use it it might
                     // cause a big mouse_delta
                     self.mouse_pos = None;
+                } else {
+                    // it's possible some events have been processed in the event loop before we
+                    // actually arrive to the focus event.
+                    self.clear_events();
                 }
                 self.has_focus = has_focus;
                 info!("Window after focus event\nmouse pos = {:?}", self.mouse_pos);
@@ -60,7 +63,19 @@ impl Input {
                         let y = y as f32;
                         info!("Mouse pos before = {:?}", self.mouse_pos);
                         if let Some((old_x, old_y)) = self.mouse_pos {
-                            self.mouse_delta = Some((x - old_x, old_y - y));
+                            let mut delta_x = (x - old_x);
+                            if delta_x.abs() > 40.0 {
+                                delta_x = delta_x.signum() * 40.0;
+                            }
+                            let mut delta_y = (old_y - y);
+
+                            if delta_y.abs() > 40.0 {
+                                delta_y = delta_y.signum() * 40.0;
+                            }
+                            self.mouse_delta = Some((delta_x, delta_y
+//                                (x - old_x) / (x - old_x).abs(),
+//                                (old_y - y) / (old_y - y).abs(),
+                            ));
                         }
 
                         self.mouse_pos = Some((x, y));
@@ -80,6 +95,11 @@ impl Input {
                 }
             }
         }
+    }
+
+    pub fn clear_events(&mut self) {
+        self.events.clear();
+        self.mouse_delta = None;
     }
 
     pub fn has_key_down(&self, key: Key) -> bool {

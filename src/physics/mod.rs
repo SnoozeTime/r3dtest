@@ -27,7 +27,6 @@ use std::fs;
 pub enum Shape {
     // half-width. Center of box is position of rigidbody.
     AABB(glam::Vec3),
-    ConvexHull,
 }
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Eq, PartialEq)]
@@ -131,7 +130,7 @@ impl PhysicWorld {
         }
     }
 
-    pub fn step(&mut self, _dt: f32) {
+    pub fn step(&mut self) {
         let mut joint = DefaultJointConstraintSet::new();
         self.mechanical_world.step(
             &mut self.geometrical_world,
@@ -140,26 +139,6 @@ impl PhysicWorld {
             &mut joint,
             &mut self.force_generators,
         );
-
-        let contact_events = self.geometrical_world.contact_events();
-        for event in contact_events.into_iter() {
-            debug!("Contact events after step {:?}", event);
-        }
-        let proximity_events = self.geometrical_world.proximity_events();
-        for event in proximity_events.into_iter() {
-            debug!("Contact events after step {:?}", event);
-        }
-        /*
-                 /// The contact events pool.
-        pub fn contact_events(&self) -> &ContactEvents<CollHandle> {
-            self.narrow_phase.contact_events()
-        }
-
-        /// The proximity events pool.
-        pub fn proximity_events(&self) -> &ProximityEvents<CollHandle> {
-            self.narrow_phase.proximity_events()
-        }
-                */
     }
 
     pub fn add_body(&mut self, transform: &Transform, body_component: &mut RigidBody) -> BodyIndex {
@@ -168,51 +147,6 @@ impl PhysicWorld {
         let shape_handle = match body_component.shape {
             Shape::AABB(aabb) => {
                 ShapeHandle::new(Cuboid::new(Vector3::new(aabb.x(), aabb.y(), aabb.z())))
-            }
-            Shape::ConvexHull => {
-                let points = vec![
-                    Point3::new(1.0, -1.0, -1.0),
-                    Point3::new(1.0, -1.0, 1.0),
-                    Point3::new(0.49584853649139404, -1.0, 1.0),
-                    Point3::new(-1.0, -1.0, -0.49584853649139404),
-                    Point3::new(-1.0, -1.0, -1.0),
-                    // second face
-                    Point3::new(1.0, 1.0, 1.0),
-                    Point3::new(0.49584853649139404, 1.0, 1.0),
-                    Point3::new(0.49584853649139404, -1.0, 1.0),
-                    Point3::new(1.0, -1.0, 1.0),
-                    //third face
-                    Point3::new(-1.0, 1.0, -1.0),
-                    Point3::new(1.0, 1.0, -1.0),
-                    Point3::new(1.0, -1.0, -1.0),
-                    Point3::new(-1.0, -1.0, -1.0),
-                    // fourth face
-                    Point3::new(1.0, 1.0, -1.0),
-                    Point3::new(1.0, 1.0, 1.0),
-                    Point3::new(1.0, -1.0, 1.0),
-                    Point3::new(1.0, -1.0, -1.0),
-                    // 5th
-                    Point3::new(-1.0, -1.0, -1.0),
-                    Point3::new(-1.0, -1.0, -0.49584853649139404),
-                    Point3::new(-1.0, 1.0, -0.49584853649139404),
-                    Point3::new(-1.0, 1.0, -1.0),
-                    // 6th
-                    Point3::new(0.49584853649139404, -1.0, 1.0),
-                    Point3::new(0.49584853649139404, 1.0, 1.0),
-                    Point3::new(-1.0, 1.0, -0.49584853649139404),
-                    Point3::new(-1.0, -1.0, -0.49584853649139404),
-                    // 7th
-                    Point3::new(-1.0, 1.0, -1.0),
-                    Point3::new(-1.0, 1.0, -0.49584853649139404),
-                    Point3::new(0.49584853649139404, 1.0, 1.0),
-                    Point3::new(1.0, 1.0, 1.0),
-                    Point3::new(1.0, 1.0, -1.0),
-                ];
-
-                let hull =
-                    ConvexHull::try_from_points(&points).expect("Convex hull computation failed.");
-                println!("SHAPE HANDLE = {:?}", hull);
-                ShapeHandle::new(hull)
             }
         };
 

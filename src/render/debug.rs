@@ -178,7 +178,7 @@ impl DebugRenderer {
                 if let DebugRender::Aabb(aabb) = debug_render {
                     let model = glam::Mat4::from_scale_rotation_translation(
                         *aabb,
-                        glam::Quat::identity(),
+                        t.rotation,
                         t.translation,
                     );
                     iface.model.update(model.to_cols_array_2d());

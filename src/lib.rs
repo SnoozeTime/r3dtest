@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate bitflags;
+
 pub mod animation;
 pub mod camera;
 pub mod collections;
@@ -13,3 +16,28 @@ pub mod physics;
 pub mod render;
 pub mod resources;
 pub mod scene;
+
+use log::debug;
+
+#[macro_export]
+macro_rules! timed {
+    ($val:expr) => {
+        // Use of `match` here is intentional because it affects the lifetimes
+        // of temporaries - https://stackoverflow.com/a/48732525/1063961
+        match std::time::Instant::now() {
+            now => match $val {
+                tmp => {
+                    let elapsed = (std::time::Instant::now() - now).as_millis();
+                    eprintln!(
+                        "[{}:{}] {} = {:#?}",
+                        file!(),
+                        line!(),
+                        stringify!($val),
+                        elapsed
+                    );
+                    tmp
+                }
+            },
+        }
+    };
+}
