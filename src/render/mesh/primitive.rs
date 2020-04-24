@@ -1,7 +1,9 @@
 use super::{
-    Vertex, VertexNormal, VertexPosition, VertexTangent, VertexTexCoord0, VertexTexCoord1,
+    Vertex, VertexColor, VertexNormal, VertexPosition, VertexTangent, VertexTexCoord0,
+    VertexTexCoord1,
 };
 use crate::render::mesh::material::Material;
+use crate::render::mesh::scene::{Assets, MaterialId};
 use crate::render::mesh::ImportData;
 use luminance::pipeline::TessGate;
 use luminance::tess::{Mode, Tess, TessBuilder};
@@ -10,7 +12,7 @@ use luminance_glfw::GlfwSurface;
 /// Smallest unit in gltf. Contains the vertices,
 pub struct Primitive {
     pub tess: Tess,
-    pub material: Material,
+    pub material: MaterialId,
 }
 
 impl Primitive {
@@ -18,6 +20,7 @@ impl Primitive {
         surface: &mut GlfwSurface,
         primitive: gltf::Primitive,
         import_data: &ImportData,
+        assets: &mut Assets,
     ) -> Self {
         let buffers = &import_data.1;
         let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
@@ -33,6 +36,13 @@ impl Primitive {
         if let Some(normals) = reader.read_normals() {
             for (i, normal) in normals.enumerate() {
                 vertices[i].normal = VertexNormal::new(normal);
+            }
+        }
+
+        if let Some(colors) = reader.read_colors(0) {
+            let colors = colors.into_rgba_f32();
+            for (i, c) in colors.enumerate() {
+                vertices[i].color = VertexColor::new(c);
             }
         }
 
@@ -71,7 +81,16 @@ impl Primitive {
             gltf::mesh::Mode::LineStrip => Mode::LineStrip,
         };
 
-        let material = Material::from_gltf(surface, &primitive.material(), import_data);
+        let material = primitive.material().index();
+        // Load material if not yet present.
+        if !assets.materials.contains_key(&material) {
+            let new_material =
+                Material::from_gltf(surface, &primitive.material(), import_data, assets);
+
+            assets
+                .materials
+                .insert(primitive.material().index(), new_material);
+        }
 
         let mut tess_builder = TessBuilder::new(surface)
             .set_mode(mode)

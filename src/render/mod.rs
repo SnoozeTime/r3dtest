@@ -362,8 +362,13 @@ impl Renderer {
                 //                    &self.offscreen_buffer,
                 //                    &self.shaders,
                 //                );
-                self.deferred_pbr_renderer
-                    .render(&pipeline, &mut shd_gate, &self.shaders);
+                self.deferred_pbr_renderer.render(
+                    &pipeline,
+                    &mut shd_gate,
+                    &self.projection,
+                    &self.view,
+                    world,
+                );
 
                 if self.debug {
                     self.debug_renderer.render(

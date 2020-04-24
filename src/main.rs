@@ -239,7 +239,6 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         current_time = now;
 
         let end_of_frame = Instant::now() - start_of_render;
-        println!("Frame took {}ms after rendering", end_of_frame.as_millis());
     }
 }
 

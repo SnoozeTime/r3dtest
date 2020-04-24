@@ -11,13 +11,13 @@ use image::DynamicImage::*;
 use image::GenericImageView;
 use image::ImageFormat::{JPEG, PNG};
 use image::{DynamicImage, FilterType};
-use luminance::pixel::{Pixel, R8UI, RG8UI, RGB8UI, RGBA8UI};
-use luminance::texture::{Dim2, GenMipmaps, Sampler};
+use luminance::pixel::{NormRGB8UI, Pixel, R8UI, RG8UI, RGBA8UI};
+use luminance::texture::{Dim2, GenMipmaps, MagFilter, MinFilter, Sampler, Wrap};
 use luminance_glfw::GlfwSurface;
 
 // TODO use enum instead
 pub struct Texture {
-    texture: luminance::texture::Texture<Dim2, RGB8UI>,
+    pub texture: luminance::texture::Texture<Dim2, NormRGB8UI>,
 }
 
 impl Texture {
@@ -103,7 +103,7 @@ impl Texture {
         match dyn_img {
             /// Each pixel in this image is 8-bit Rgb
             DynamicImage::ImageRgb8(_) => (),
-            _ => panic!("Image type not supported"),
+            i => panic!("Image type not supported {:?}", i.color()),
         }
         let (width, height) = dyn_img.dimensions();
         let needs_power_of_two = false;
@@ -118,8 +118,44 @@ impl Texture {
             };
 
         // Now load the texture
-        let mut tex: luminance::texture::Texture<Dim2, RGB8UI> =
-            luminance::texture::Texture::new(surface, [width, height], 0, Sampler::default())
+        let mut sampler = Sampler::default();
+        if let Some(min_filter) = texture.sampler().min_filter() {
+            match min_filter {
+                gltf::texture::MinFilter::Linear => sampler.min_filter = MinFilter::Linear,
+                gltf::texture::MinFilter::Nearest => sampler.min_filter = MinFilter::Nearest,
+                gltf::texture::MinFilter::LinearMipmapLinear => {
+                    sampler.min_filter = MinFilter::LinearMipmapLinear
+                }
+                gltf::texture::MinFilter::LinearMipmapNearest => {
+                    sampler.min_filter = MinFilter::LinearMipmapNearest
+                }
+                gltf::texture::MinFilter::NearestMipmapLinear => {
+                    sampler.min_filter = MinFilter::NearestMipmapLinear
+                }
+                gltf::texture::MinFilter::NearestMipmapNearest => {
+                    sampler.min_filter = MinFilter::NearestMipmapNearest
+                }
+            }
+        }
+
+        if let Some(mag_filter) = texture.sampler().mag_filter() {
+            match mag_filter {
+                gltf::texture::MagFilter::Nearest => sampler.mag_filter = MagFilter::Nearest,
+                gltf::texture::MagFilter::Linear => sampler.mag_filter = MagFilter::Linear,
+            }
+        }
+        match texture.sampler().wrap_s() {
+            gltf::texture::WrappingMode::MirroredRepeat => sampler.wrap_s = Wrap::MirroredRepeat,
+            gltf::texture::WrappingMode::ClampToEdge => sampler.wrap_s = Wrap::ClampToEdge,
+            gltf::texture::WrappingMode::Repeat => sampler.wrap_s = Wrap::Repeat,
+        }
+        match texture.sampler().wrap_t() {
+            gltf::texture::WrappingMode::MirroredRepeat => sampler.wrap_t = Wrap::MirroredRepeat,
+            gltf::texture::WrappingMode::ClampToEdge => sampler.wrap_t = Wrap::ClampToEdge,
+            gltf::texture::WrappingMode::Repeat => sampler.wrap_t = Wrap::Repeat,
+        }
+        let mut tex: luminance::texture::Texture<Dim2, NormRGB8UI> =
+            luminance::texture::Texture::new(surface, [width, height], 0, sampler)
                 .expect("luminance texture creation");
 
         // the first argument disables mipmap generation (we don’t care so far)

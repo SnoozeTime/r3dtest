@@ -2,6 +2,7 @@
 //! Shader file is used, but depending whether a material has some texture, different
 //! part of the shader will be used. This is done by using defines in the shader files.
 
+use crate::render::mesh::PbrShaderInterface;
 use luminance::shader::program::Program;
 use std::collections::HashMap;
 use std::fs;
@@ -11,14 +12,12 @@ bitflags! {
     pub struct ShaderFlags: u32 {
         const HAS_COLOR_TEXTURE = 0b0000001;
         const HAS_NORMAL_TEXTURE = 0b0000010;
+        const HAS_ROUGHNESS_METALLIC_MAP = 0b0000100;
+        const HAS_METALLIC_MAP = 0b0001000;
     }
 }
 
 impl ShaderFlags {
-    pub fn id(&self) -> u32 {
-        self.bits
-    }
-
     /// Will give a list of defines to add at the top of the shaders.
     pub fn to_defines(&self) -> Vec<String> {
         let mut defines = vec![];
@@ -31,6 +30,14 @@ impl ShaderFlags {
             defines.push("HAS_NORMAL_TEXTURE".to_string());
         }
 
+        if self.contains(ShaderFlags::HAS_ROUGHNESS_METALLIC_MAP) {
+            defines.push("HAS_ROUGHNESS_METALLIC_MAP".to_string());
+        }
+
+        if self.contains(ShaderFlags::HAS_METALLIC_MAP) {
+            defines.push("HAS_METALLIC_MAP".to_string());
+        }
+
         defines
     }
 }
@@ -39,40 +46,48 @@ impl ShaderFlags {
 /// 2^(ShaderFlags variants) number of shaders.
 #[derive(Default)]
 pub struct PbrShaders {
-    shaders: HashMap<u32, Program<super::VertexSemantics, (), super::deferred::PbrShaderInterface>>,
+    pub shaders: HashMap<ShaderFlags, Program<super::VertexSemantics, (), PbrShaderInterface>>,
 }
 
 impl PbrShaders {
     /// Will compile the shaders with the given flags and store it. If it already exists, this
     /// is a no-op
     pub fn add_shader(&mut self, flags: ShaderFlags) {
-        if self.shaders.contains_key(&flags.id()) {
+        if self.shaders.contains_key(&flags) {
             return;
+        } else {
+            let shader = PbrShaders::load_with_defines(flags.to_defines());
+            self.shaders.insert(flags, shader);
         }
     }
 
-    fn load_with_defines(defines: Vec<String>) {
-        let vs = fs::read_to_string("shaders/pbr/pbr_deferred_vs.glsl")
-            .expect("Could not load the PBR vertex shader");
-        let fs = fs::read_to_string("shaders/pbr/pbr_deferred_fs.glsl")
-            .expect("Could not load the PBR fragment shader");
+    fn load_with_defines(
+        defines: Vec<String>,
+    ) -> Program<super::VertexSemantics, (), PbrShaderInterface> {
+        let vs =
+            fs::read_to_string(std::env::var("ASSET_PATH").unwrap() + "shaders/pbr/pbr_vs.glsl")
+                .expect("Could not load the PBR vertex shader");
+        let fs =
+            fs::read_to_string(std::env::var("ASSET_PATH").unwrap() + "shaders/pbr/pbr_fs.glsl")
+                .expect("Could not load the PBR fragment shader");
+
+        let mut final_fs = String::new();
+        for d in defines {
+            final_fs.push_str("#define ");
+            final_fs.push_str(&d);
+            final_fs.push_str("\n");
+        }
+        final_fs.push_str(&fs);
+
+        Program::from_strings(None, &vs, None, &final_fs)
+            .unwrap()
+            .ignore_warnings()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn get_id() {
-        let flags1 = ShaderFlags::HAS_COLOR_TEXTURE;
-        let flags2 = ShaderFlags::HAS_NORMAL_TEXTURE;
-        let flags3 = ShaderFlags::HAS_COLOR_TEXTURE | ShaderFlags::HAS_NORMAL_TEXTURE;
-
-        assert_eq!(1, flags1.id());
-        assert_eq!(2, flags2.id());
-        assert_eq!(3, flags3.id());
-    }
 
     #[test]
     fn to_defines() {

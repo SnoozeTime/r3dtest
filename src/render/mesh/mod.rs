@@ -8,10 +8,12 @@ use crate::render::mesh::scene::Scene;
 use crate::render::shaders::Shaders;
 use luminance::context::GraphicsContext;
 use luminance::linear::M44;
-use luminance::pipeline::ShadingGate;
+use luminance::pipeline::{BoundTexture, ShadingGate};
+use luminance::pixel::NormUnsigned;
 use luminance::render_state::RenderState;
 use luminance::shader::program::{Program, Uniform};
 use luminance::tess::Tess;
+use luminance::texture::Dim2;
 use luminance_derive::{Semantics, UniformInterface, Vertex};
 use luminance_glfw::GlfwSurface;
 
@@ -40,6 +42,9 @@ pub enum VertexSemantics {
     #[sem(name = "tangent", repr = "[f32; 4]", wrapper = "VertexTangent")]
     Tangent,
 
+    #[sem(name = "Color", repr = "[f32; 4]", wrapper = "VertexColor")]
+    Color,
+
     #[sem(name = "tex_coord_0", repr = "[f32; 2]", wrapper = "VertexTexCoord0")]
     TextCoord0,
 
@@ -55,6 +60,7 @@ pub struct Vertex {
     pub tangent: VertexTangent,
     pub tex_coord_0: VertexTexCoord0,
     pub tex_coord_1: VertexTexCoord1,
+    pub color: VertexColor,
 }
 
 impl Default for Vertex {
@@ -65,6 +71,7 @@ impl Default for Vertex {
             tangent: VertexTangent::new([0.0, 0.0, 0.0, 0.0]),
             tex_coord_0: VertexTexCoord0::new([0.0, 0.0]),
             tex_coord_1: VertexTexCoord1::new([0.0, 0.0]),
+            color: VertexColor::new([1.0, 1.0, 1.0, 1.0]),
         }
     }
 }
@@ -99,7 +106,7 @@ uniform float ao;
 uniform vec3 lightPositions[4];
 uniform vec3 lightColors[4];
 **/
-#[derive(Debug, UniformInterface)]
+#[derive(UniformInterface)]
 pub struct PbrShaderInterface {
     // matrix for the position
     #[uniform(unbound)]
@@ -110,23 +117,52 @@ pub struct PbrShaderInterface {
     pub model: Uniform<M44>,
 
     #[uniform(unbound)]
-    pub camera_position: Uniform<[f32; 3]>,
+    pub u_Camera: Uniform<[f32; 3]>,
 
     // material.
     #[uniform(unbound)]
-    pub albedo: Uniform<[f32; 3]>,
+    pub u_BaseColorFactor: Uniform<[f32; 3]>,
     #[uniform(unbound)]
-    pub metallic: Uniform<f32>,
+    pub u_MetallicRoughnessValues: Uniform<[f32; 2]>,
     #[uniform(unbound)]
-    pub roughness: Uniform<f32>,
+    pub u_AlphaBlend: Uniform<f32>,
     #[uniform(unbound)]
-    pub ao: Uniform<f32>,
+    pub u_AlphaCutoff: Uniform<f32>,
+    // optional.
+    #[uniform(unbound)]
+    pub u_BaseColorSampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
+    #[uniform(unbound)]
+    pub u_BaseColorTexCoord: Uniform<u32>,
+
+    // optional.
+    #[uniform(unbound)]
+    pub u_NormalSampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
+    #[uniform(unbound)]
+    pub u_NormalTexCoord: Uniform<u32>,
+    #[uniform(unbound)]
+    pub u_NormalScale: Uniform<f32>,
+
+    // optional.
+    #[uniform(unbound)]
+    pub u_MetallicRoughnessSampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
+    #[uniform(unbound)]
+    pub u_MetallicRoughnessTexCoord: Uniform<u32>,
+
+    // optional.
+    #[uniform(unbound)]
+    pub u_MetallicSampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
+    #[uniform(unbound)]
+    pub u_MetallicTexCoord: Uniform<u32>,
 
     // light sources.
     #[uniform(unbound)]
-    pub light_positions: Uniform<[f32; 3]>,
+    pub u_LightDirection: Uniform<[f32; 3]>,
     #[uniform(unbound)]
-    pub light_colors: Uniform<[f32; 3]>,
+    pub u_LightColor: Uniform<[f32; 3]>,
+    #[uniform(unbound)]
+    pub u_AmbientLightColor: Uniform<[f32; 3]>,
+    #[uniform(unbound)]
+    pub u_AmbientLightIntensity: Uniform<f32>,
 }
 
 pub struct GltfSceneRenderer {
@@ -141,32 +177,32 @@ impl GltfSceneRenderer {
 
         Self { scene }
     }
-
-    pub fn render<S>(
-        &self,
-        projection: &glam::Mat4,
-        view: &glam::Mat4,
-        world: &hecs::World,
-        shd_gate: &mut ShadingGate<S>,
-        shaders: &Shaders,
-    ) where
-        S: GraphicsContext,
-    {
-        if let Some((_, (t, _))) = world.query::<(&Transform, &MainPlayer)>().iter().next() {
-            shd_gate.shade(&shaders.scene_program, |iface, mut rdr_gate| {
-                iface.view.update(view.to_cols_array_2d());
-                iface.projection.update(projection.to_cols_array_2d());
-                iface.camera_position.update(t.translation.into());
-                let model = glam::Mat4::from_scale_rotation_translation(
-                    glam::Vec3::one(),
-                    glam::Quat::identity(),
-                    glam::Vec3::new(0.0, 4.0, 0.0),
-                );
-
-                rdr_gate.render(&RenderState::default(), |mut tess_gate| {
-                    // self.scene.render(&iface, &mut tess_gate);
-                });
-            });
-        }
-    }
+    //
+    //    pub fn render<S>(
+    //        &self,
+    //        projection: &glam::Mat4,
+    //        view: &glam::Mat4,
+    //        world: &hecs::World,
+    //        shd_gate: &mut ShadingGate<S>,
+    //        shaders: &Shaders,
+    //    ) where
+    //        S: GraphicsContext,
+    //    {
+    //        if let Some((_, (t, _))) = world.query::<(&Transform, &MainPlayer)>().iter().next() {
+    //            shd_gate.shade(&shaders.scene_program, |iface, mut rdr_gate| {
+    //                iface.view.update(view.to_cols_array_2d());
+    //                iface.projection.update(projection.to_cols_array_2d());
+    //                iface.camera_position.update(t.translation.into());
+    //
+    //
+    //                for node in self.scene.nodes {
+    //
+    //                }
+    //
+    //                rdr_gate.render(&RenderState::default(), |mut tess_gate| {
+    //                    // self.scene.render(&iface, &mut tess_gate);
+    //                });
+    //            });
+    //        }
+    //    }
 }
