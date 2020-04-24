@@ -57,6 +57,7 @@ impl Scene {
         };
         let flags = ShaderFlags::HAS_NORMAL_TEXTURE
             | ShaderFlags::HAS_ROUGHNESS_METALLIC_MAP
+            | ShaderFlags::HAS_METALLIC_MAP
             | ShaderFlags::HAS_COLOR_TEXTURE;
 
         let texture_img = read_image(
