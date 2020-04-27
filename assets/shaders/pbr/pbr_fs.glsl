@@ -1,32 +1,125 @@
 out vec4 fragColor;
 
-in vec2 v_tex_coords;
-in vec3 v_world_pos;
-in vec3 v_normal;
+in vec3 v_Position;
+in vec2 v_UV[2];
+in vec3 v_Normal;
 
-uniform vec3 camera_position;
+uniform vec3 u_Camera;
 
 // material
-uniform vec3  albedo;
-uniform float metallic;
-uniform float roughness;
+uniform vec3 u_BaseColorFactor;
+uniform vec2 u_MetallicRoughnessValues;
 uniform float ao;
 
+#ifdef HAS_NORMAL_TEXTURE
+uniform sampler2D u_NormalSampler;
+uniform int u_NormalTexCoord;
+uniform float u_NormalScale;
+#endif
+
+#ifdef HAS_ROUGHNESS_METALLIC_MAP
+uniform sampler2D u_MetallicRoughnessSampler;
+uniform int u_MetallicRoughnessTexCoord;
+#endif
+
+#ifdef HAS_METALLIC_MAP
+uniform sampler2D u_MetallicSampler;
+uniform int u_MetallicTexCoord;
+#endif
+
+#ifdef HAS_COLOR_TEXTURE
+uniform sampler2D u_BaseColorSampler;
+uniform int u_BaseColorTexCoord;
+#endif
 
 // direct lights
-uniform vec3 light_positions;
-uniform vec3 light_colors;
+uniform vec3 u_LightDirection;
+uniform vec3 u_LightColor;
 
 
 const float PI = 3.14159265359;
 
 
 vec3[4] lights = vec3[](
-    vec3(1., 2., 1.),
-    vec3( 1., 0.5, -1.),
-    vec3( -1.,  0.5, 1.),
-    vec3(-1.,  2., -1.)
+    vec3(1.,  1.0, 0.),
+    vec3(-1.,  1.0, 0.),
+    vec3(0.,  4.0, 0.),
+    vec3(0.,  1.0, 1.)
 );
+
+// ----------------------------------------------------------------------------
+// Easy trick to get tangent-normals to world-space to keep PBR code simplified.
+// Don't worry if you don't get what's going on; you generally want to do normal
+// mapping the usual way for performance anways; I do plan make a note of this
+// technique somewhere later in the normal mapping tutorial.
+vec3 getNormal() {
+    #ifdef HAS_NORMAL_TEXTURE
+        vec2 uv = v_UV[u_NormalTexCoord];
+        vec3 tangentNormal = texture(u_NormalSampler, uv).xyz * 2.0 - 1.0;
+
+        vec3 Q1  = dFdx(v_Position);
+        vec3 Q2  = dFdy(v_Position);
+        vec2 st1 = dFdx(v_UV[0]);
+        vec2 st2 = dFdy(v_UV[0]);
+
+        vec3 N   = normalize(v_Normal);
+        vec3 T  = normalize(Q1*st2.t - Q2*st1.t);
+        vec3 B  = -normalize(cross(N, T));
+        mat3 TBN = mat3(T, B, N);
+        vec3 n = normalize(TBN * tangentNormal);
+    #else
+        vec3 n = normalize(v_Normal);
+    #endif
+    return n;
+}
+
+/*
+#ifdef HAS_ROUGHNESS_METALLIC_MAP
+uniform sampler2D u_metallic_roughness_sampler;
+uniform int u_metallic_roughness_tex_coord;
+#endif*
+*/
+float getRoughness() {
+    #ifdef HAS_ROUGHNESS_METALLIC_MAP
+        float r = texture(u_MetallicRoughnessSampler, v_UV[u_MetallicRoughnessTexCoord]).r;
+    #else
+        float r = u_MetallicRoughnessValues.y;
+    #endif
+
+    return r;
+}
+
+float getMetallic() {
+    #ifdef HAS_METALLIC_MAP
+    float m = texture(u_MetallicSampler, v_UV[u_MetallicTexCoord]).r;
+    #else
+    float m = u_MetallicRoughnessValues.x;
+    #endif
+
+    return m;
+}
+
+vec3 getAlbedo() {
+    #ifdef HAS_COLOR_TEXTURE
+        vec3 albedo = texture(u_BaseColorSampler, v_UV[u_BaseColorTexCoord]).rgb;
+    #else
+        vec3 albedo = u_BaseColorFactor;
+    #endif
+
+    return albedo;
+}
+
+vec2 getRoughnessMetallic() {
+    #ifdef HAS_ROUGHNESS_METALLIC_MAP
+    float r = texture(u_MetallicRoughnessSampler, v_UV[u_MetallicRoughnessTexCoord]).g;
+    float m = texture(u_MetallicRoughnessSampler, v_UV[u_MetallicRoughnessTexCoord]).b;
+    #else
+    float r = u_MetallicRoughnessValues.y;
+    float m = u_MetallicRoughnessValues.x;
+    #endif
+
+    return vec2(r, m);
+}
 
 // ----------------------------------------------------------------------------
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -70,8 +163,15 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 }
 
 void main() {
-    vec3 N = normalize(v_normal);
-    vec3 V = normalize(camera_position - v_world_pos);
+    vec3 N = getNormal();
+    vec3 V = normalize(u_Camera - v_Position);
+
+
+    vec3 albedo = getAlbedo();
+
+    vec2 roughnessMetallic = getRoughnessMetallic();
+    float metallic = roughnessMetallic.y;
+    float roughness = roughnessMetallic.x;
 
     // calculate reflectance at normal incidence; if dia-electric (like plastic) use F0
     // of 0.04 and if it's a metal, use the albedo color as F0 (metallic workflow)
@@ -82,11 +182,11 @@ void main() {
     vec3 Lo = vec3(0.0);
     // For each light, we want to calculate the Cook-Torrance specular BRDF
     for (int i = 0; i < 4; i++) {
-        vec3 L = normalize(lights[i] - v_world_pos);
+        vec3 L = normalize(lights[i] - v_Position);
         vec3 H = normalize(V + L);
-        float distance = length(lights[i] - v_world_pos);
+        float distance = length(lights[i] - v_Position);
         //float attenuation = 1.0 / (distance * distance);
-        vec3 radiance = light_colors; // * attenuation;
+        vec3 radiance = u_LightColor; // * attenuation;
 
         // Cook-Torrance BRDF
         float NDF = DistributionGGX(N, H, roughness);
@@ -120,5 +220,4 @@ void main() {
     vec3 color   = ambient + Lo;
     color = color / (color + vec3(1.0));
     fragColor = vec4(pow(color, vec3(1.0/2.2)), 1.0);
-
 }

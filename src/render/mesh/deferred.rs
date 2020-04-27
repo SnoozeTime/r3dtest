@@ -10,8 +10,7 @@ use luminance::framebuffer::Framebuffer;
 use luminance::linear::M44;
 use luminance::pipeline::{BoundTexture, Pipeline, PipelineState, ShadingGate};
 use luminance::pixel::{
-    Depth32F, Floating, Integral, NormRGBA8UI, NormUnsigned, Unsigned, RGBA16F, RGBA16I, RGBA32F,
-    RGBA8UI,
+    Depth32F, Floating, Integral, NormRGBA8UI, NormUnsigned, Unsigned, RGBA16I, RGBA32F, RGBA8UI,
 };
 use luminance::render_state::RenderState;
 use luminance::shader::program::{Program, ProgramInterface, Uniform};
@@ -23,9 +22,9 @@ use luminance_windowing::Surface;
 
 // G-Buffer
 pub type OffscreenBuffer =
-    Framebuffer<Dim2, (NormRGBA8UI, NormRGBA8UI, RGBA16F, RGBA16F), Depth32F>;
+    Framebuffer<Dim2, (NormRGBA8UI, NormRGBA8UI, RGBA32F, RGBA32F), Depth32F>;
 // light contributions. Values will exceed 1.0 so then we can do HDR, use it for glow and so one. Happy days.
-pub type LightBuffer = Framebuffer<Dim2, RGBA16F, ()>;
+pub type LightBuffer = Framebuffer<Dim2, RGBA32F, ()>;
 
 pub struct DeferredRenderer {
     offscreen_buffer: OffscreenBuffer,
@@ -130,7 +129,8 @@ impl DeferredRenderer {
         println!("Will import from {}", asset_path);
         let import = gltf::import(asset_path).unwrap();
         let g_scene = import.0.scenes().next().unwrap();
-        let scene = Scene::from_gltf(surface, &g_scene, &import);
+        let mut scene = Scene::from_gltf(surface, &g_scene, &import);
+        scene.add_fake_material(surface);
         let quad = TessBuilder::new(surface)
             .set_vertex_nb(4)
             .set_mode(Mode::TriangleFan)

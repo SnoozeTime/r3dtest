@@ -3,12 +3,12 @@ use luminance::tess::{Mode, Tess, TessBuilder, TessSliceIndex};
 use luminance_derive::{Semantics, Vertex};
 use luminance_glfw::Surface;
 
+use imgui::DrawData;
 #[allow(unused_imports)]
 use log::{debug, error, info};
 use luminance::pipeline::{BoundTexture, PipelineState};
 use luminance::render_state::RenderState;
 use serde_derive::{Deserialize, Serialize};
-
 pub mod assets;
 pub mod billboard;
 pub mod debug;
@@ -30,7 +30,6 @@ use crate::render::billboard::BillboardRenderer;
 use crate::render::debug::DebugRenderer;
 use crate::render::lighting::{Emissive, LightingSystem};
 use crate::render::mesh::deferred::DeferredRenderer;
-use crate::render::mesh::GltfSceneRenderer;
 use crate::render::particle::ParticleSystem;
 use crate::render::shaders::Shaders;
 use crate::render::skybox::SkyboxRenderer;
@@ -265,11 +264,18 @@ impl Renderer {
     pub fn toggle_debug(&mut self) {
         self.debug = !self.debug;
     }
-    pub fn render(&mut self, surface: &mut GlfwSurface, world: &World, resources: &Resources) {
+
+    pub fn render(
+        &mut self,
+        surface: &mut GlfwSurface,
+        world: &World,
+        resources: &Resources,
+        editor: Option<(&imgui_luminance::Renderer, &DrawData)>,
+    ) {
         let assets = resources.fetch::<AssetManager>().unwrap();
         self.shaders.update();
 
-        let color = [0., 0., 0., 1.];
+        let color = [0.8, 0.8, 0.8, 1.];
 
         // FIXME maybe not the place for that.
         let should_render_player_ui = {
@@ -392,6 +398,10 @@ impl Renderer {
 
                     self.text_renderer
                         .render(&pipeline, &mut shd_gate, &self.shaders);
+                }
+
+                if let Some((editor, draw_data)) = editor {
+                    editor.render(&pipeline, &mut shd_gate, draw_data);
                 }
             },
         );

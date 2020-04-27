@@ -6,6 +6,8 @@ use std::time::{Duration, Instant};
 use log::{debug, error, info};
 use serde_derive::{Deserialize, Serialize};
 
+use crate::ControllerMode::Editor;
+use imgui::{Context, FontConfig, FontGlyphRanges, FontSource};
 use luminance_windowing::CursorMode;
 use r3dtest::animation::AnimationSystem;
 use r3dtest::controller::fps::FpsController;
@@ -93,9 +95,11 @@ fn setup_resources() -> Resources {
     resources
 }
 
+#[derive(Clone, Copy, Debug)]
 enum ControllerMode {
     Player,
     Free,
+    Editor,
 }
 
 fn main_loop(mut surface: GlfwSurface, map_name: String) {
@@ -140,6 +144,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
     //let mut fps_controller = FpsController::default();
 
     let mut controller_mode = ControllerMode::Player;
+    let mut previous_controller_mode = ControllerMode::Player;
     let free_controller = FreeController;
     let main_player_entity = world
         .query::<&MainPlayer>()
@@ -148,12 +153,35 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         .next()
         .unwrap();
     let mut current_time = Instant::now();
+    let mut imgui = Context::create();
+    let font_size = 13.0;
+
+    imgui.fonts().add_font(&[FontSource::TtfData {
+        data: include_bytes!("../assets/fonts/DejaVuSans.ttf"),
+        size_pixels: font_size,
+        config: Some(FontConfig {
+            rasterizer_multiply: 1.75,
+            glyph_ranges: FontGlyphRanges::default(),
+            ..FontConfig::default()
+        }),
+    }]);
+
+    let mut imgui_renderer = imgui_luminance::Renderer::new(&mut surface, &mut imgui);
+    imgui.set_ini_filename(None);
+
+    let mut editor = r3dtest::editor::Editor {};
+
     'app: loop {
         let start_of_frame = Instant::now();
 
         {
             let mut input = resources.fetch_mut::<Input>().unwrap();
-            input.process_events(&mut surface);
+
+            if let ControllerMode::Editor = controller_mode {
+                input.process_events_with_editor(&mut surface, imgui.io_mut(), &imgui_renderer);
+            } else {
+                input.process_events(&mut surface);
+            }
             if input.should_exit {
                 break 'app;
             }
@@ -161,9 +189,23 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
                 renderer.toggle_debug();
             }
 
+            if input.has_key_event_happened(Key::Enter, Action::Press) {
+                editor_mode(
+                    &mut surface,
+                    &mut controller_mode,
+                    &mut previous_controller_mode,
+                );
+            }
+
             if input.has_key_event_happened(Key::F2, Action::Press) {
                 // toggle controller.
-                toggle_controller(&mut controller_mode, player_entity, &world, &mut physics);
+                toggle_controller(
+                    &mut controller_mode,
+                    &mut previous_controller_mode,
+                    player_entity,
+                    &world,
+                    &mut physics,
+                );
             }
 
             if input.has_key_event_happened(Key::F3, Action::Press) {
@@ -183,6 +225,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
                 controller.update(&mut world, &mut physics, &resources);
             }
             ControllerMode::Free => free_controller.process_input(&mut world, &mut resources),
+            _ => (),
         }
 
         renderer.update_view_matrix(&world);
@@ -214,10 +257,28 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         gun_system.update(&mut world, dt, &mut resources);
         pickup_system.update(&world, &physics, &mut resources);
         //fps_controller.update(&mut world, &mut physics, dt);
+
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------
-        renderer.render(&mut surface, &world, &resources);
+
+        // render the editor.
+        let ui = imgui.frame();
+        editor.show_components(&ui, &world);
+        //ui.show_demo_window(&mut true);
+        let draw_data = ui.render();
+        imgui_renderer.prepare(&mut surface, draw_data);
+
+        renderer.render(
+            &mut surface,
+            &world,
+            &resources,
+            if let ControllerMode::Editor = controller_mode {
+                Some((&imgui_renderer, &draw_data))
+            } else {
+                None
+            },
+        );
 
         // potential reload the world.
         loader.update(&mut world, &mut physics, &mut resources);
@@ -244,10 +305,12 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
 
 fn toggle_controller(
     current_controller_mode: &mut ControllerMode,
+    previous_controller_mode: &mut ControllerMode,
     player_entity: hecs::Entity,
     world: &hecs::World,
     physics: &mut PhysicWorld,
 ) {
+    *previous_controller_mode = *current_controller_mode;
     let new_mode = match current_controller_mode {
         ControllerMode::Player => {
             let rb = world.get::<RigidBody>(player_entity).unwrap();
@@ -260,6 +323,26 @@ fn toggle_controller(
             physics.add_body(&t, &mut rb);
             ControllerMode::Player
         }
+        _ => *current_controller_mode,
     };
     *current_controller_mode = new_mode;
+}
+
+fn editor_mode(
+    surface: &mut GlfwSurface,
+    current_controller_mode: &mut ControllerMode,
+    previous_controller_mode: &mut ControllerMode,
+) {
+    match current_controller_mode {
+        ControllerMode::Player | ControllerMode::Free => {
+            surface.set_cursor_mode(CursorMode::Visible);
+            *previous_controller_mode = *current_controller_mode;
+            *current_controller_mode = ControllerMode::Editor;
+        }
+        _ => {
+            surface.set_cursor_mode(CursorMode::Disabled);
+            *current_controller_mode = *previous_controller_mode;
+            *previous_controller_mode = ControllerMode::Editor;
+        }
+    };
 }

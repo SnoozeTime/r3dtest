@@ -21,6 +21,7 @@ pub struct Texture {
 }
 
 impl Texture {
+    /// Create a texture from a GLTF document
     pub fn from_gltf(
         surface: &mut GlfwSurface,
         texture: &gltf::Texture,

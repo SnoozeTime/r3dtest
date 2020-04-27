@@ -4,12 +4,13 @@
 use super::shaders::ShaderFlags;
 use crate::ecs::Transform;
 use crate::render::lighting::{AmbientLight, DirectionalLight};
-use crate::render::mesh::deferred::PbrShaderInterface;
 use crate::render::mesh::material::Material;
 use crate::render::mesh::mesh::Mesh;
 use crate::render::mesh::shaders::PbrShaders;
 use crate::render::mesh::texture::Texture;
+use crate::render::mesh::PbrShaderInterface;
 use crate::render::mesh::{ImportData, ShaderInterface};
+use crate::render::Render;
 use hecs::World;
 use luminance::context::GraphicsContext;
 use luminance::pipeline::{Pipeline, ShadingGate, TessGate};
@@ -21,83 +22,106 @@ use luminance_glfw::GlfwSurface;
 use std::collections::HashMap;
 use std::path::Path;
 
-pub type MeshId = usize;
+pub type MeshId = String;
 pub type MaterialId = Option<usize>; // None is the default material.
 
 pub struct Scene {
-    nodes: Vec<Node>,
-    assets: Assets,
+    pub nodes: Vec<Node>,
+    pub assets: Assets,
 }
 
 /// All the assets for the scene :)
 /// meshes, shaders, materials.
-#[derive(Default)]
 pub struct Assets {
     pub shaders: PbrShaders,
     pub materials: HashMap<MaterialId, Material>,
     pub meshes: HashMap<MeshId, Mesh>,
 }
 
+impl Default for Assets {
+    fn default() -> Self {
+        let mut materials = HashMap::new();
+        materials.insert(None, Material::default());
+        Self {
+            shaders: PbrShaders::default(),
+            materials,
+            meshes: HashMap::new(),
+        }
+    }
+}
+
 impl Scene {
     pub fn add_fake_material(&mut self, surface: &mut GlfwSurface) {
-        let texture_img = read_image(
-            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/rustediron2_normal.png",
-        )
-        .unwrap();
-        let texture = load_from_disk(surface, texture_img);
-        let normal_map = Texture { texture };
-
-        let texture_img = read_image(
-            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/rustediron2_roughness.png",
-        )
-        .unwrap();
-        let roughness_texture = load_from_disk(surface, texture_img);
-        let roughness_map = Texture {
-            texture: roughness_texture,
-        };
-        let flags = ShaderFlags::HAS_NORMAL_TEXTURE
-            | ShaderFlags::HAS_ROUGHNESS_METALLIC_MAP
-            | ShaderFlags::HAS_METALLIC_MAP
-            | ShaderFlags::HAS_COLOR_TEXTURE;
-
-        let texture_img = read_image(
-            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/rustediron2_basecolor.png",
-        )
-        .unwrap();
-        let basecolor_texture = load_from_disk(surface, texture_img);
-        let base_color_map = Texture {
-            texture: basecolor_texture,
-        };
-
-        let texture_img = read_image(
-            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/rustediron2_basecolor.png",
-        )
-        .unwrap();
-        let metallic_texture = load_from_disk(surface, texture_img);
-        let metallic_map = Texture {
-            texture: metallic_texture,
-        };
-
-        let material = Material {
-            base_color: [1.0, 1.0, 1.0, 1.0],
-            albedo_texture: Some(base_color_map),
-            color_texture_coord_set: Some(0),
-            normal_scale: Some(1.0),
-            normal_texture_coord_set: Some(0),
-            normal_texture: Some(normal_map),
-            roughness_metallic_texture_coord_set: Some(0),
-            roughness_metallic_texture: Some(roughness_map),
-            metallic_roughness_values: [0.0, 1.0],
-            metallic_texture: Some(metallic_map),
-            metallic_texture_coord_set: Some(0),
-            ao: 1.0,
-            alpha_cutoff: 0.0,
-            alpha_mode: gltf::material::AlphaMode::Opaque,
-            shader_flags: flags,
-        };
-
-        self.assets.shaders.add_shader(flags);
-        self.assets.materials.insert(None, material);
+        //        let texture_img = read_image(
+        //            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/rustediron2_normal.png",
+        //        )
+        //        .unwrap();
+        //        let texture = load_from_disk(surface, texture_img);
+        //        let normal_map = Texture { texture };
+        //
+        //        let texture_img = read_image(
+        //            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/roughness_metallic_map.png",
+        //        )
+        //        .unwrap();
+        //        let roughness_texture = load_from_disk(surface, texture_img);
+        //        let roughness_map = Texture {
+        //            texture: roughness_texture,
+        //        };
+        //        let flags = ShaderFlags::HAS_NORMAL_TEXTURE
+        //            | ShaderFlags::HAS_ROUGHNESS_METALLIC_MAP
+        //            | ShaderFlags::HAS_METALLIC_MAP
+        //            | ShaderFlags::HAS_COLOR_TEXTURE;
+        //
+        //        let texture_img = read_image(
+        //            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/rustediron2_basecolor.png",
+        //        )
+        //        .unwrap();
+        //        let basecolor_texture = load_from_disk(surface, texture_img);
+        //        let base_color_map = Texture {
+        //            texture: basecolor_texture,
+        //        };
+        //
+        //        let material = Material {
+        //            base_color: [1.0, 1.0, 1.0, 1.0],
+        //            albedo_texture: Some(base_color_map),
+        //            color_texture_coord_set: Some(0),
+        //            normal_scale: Some(1.0),
+        //            normal_texture_coord_set: Some(0),
+        //            normal_texture: Some(normal_map),
+        //            roughness_metallic_texture_coord_set: Some(0),
+        //            roughness_metallic_texture: Some(roughness_map),
+        //            metallic_roughness_values: [0.0, 1.0],
+        //            ao: 1.0,
+        //            alpha_cutoff: 0.0,
+        //            alpha_mode: gltf::material::AlphaMode::Opaque,
+        //            shader_flags: flags,
+        //        };
+        //
+        //        let material = Material::from_textures(
+        //            surface,
+        //            [1.0, 1.0, 1.0, 1.0],
+        //            Some((
+        //                std::env::var("ASSET_PATH").unwrap()
+        //                    + "industrial-tile1-bl/industrial-tile1-albedo.png",
+        //                0,
+        //            )),
+        //            Some((
+        //                std::env::var("ASSET_PATH").unwrap()
+        //                    + "industrial-tile1-bl/industrial-tile1-normal-ogl.png",
+        //                0,
+        //                1.0,
+        //            )),
+        //            Some((
+        //                std::env::var("ASSET_PATH").unwrap()
+        //                    + "industrial-tile1-bl/roughness_metallic_map.png",
+        //                0,
+        //            )),
+        //            [0.0, 1.0],
+        //        )
+        //        .unwrap();
+        //
+        //        self.assets.shaders.add_shader(material.shader_flags);
+        //        self.assets.materials.insert(None, material);
     }
 
     pub fn from_gltf(surface: &mut GlfwSurface, scene: &gltf::Scene, data: &ImportData) -> Self {
@@ -107,7 +131,6 @@ impl Scene {
             .map(|node| Node::from_gltf(surface, &node, data, &mut assets))
             .collect();
         let mut scene = Self { nodes, assets };
-        scene.add_fake_material(surface);
         scene
     }
 
@@ -119,137 +142,147 @@ impl Scene {
         view: &glam::Mat4,
         world: &hecs::World,
         camera_position: glam::Vec3,
-        // iface: &ProgramInterface<PbrShaderInterface>,
-        // tess_gate: &mut TessGate<S>,
     ) where
         S: GraphicsContext,
     {
-        // FIXME that's really inefficient. Keep order by material instead. Material -> Mesh
-        for node in &self.nodes {
-            if let Some(mesh_id) = node.mesh_id {
-                if let Some(mesh) = self.assets.meshes.get(&mesh_id) {
-                    for primitive in mesh.primitives.iter() {
-                        let material = self.assets.materials.get(&None).unwrap();
-                        //let material = self.assets.materials.get(&primitive.material).unwrap();
-                        let shader = self
-                            .assets
-                            .shaders
-                            .shaders
-                            .get(&material.shader_flags)
-                            .unwrap();
+        // TODO Need to update the internal graph of the renderer. Need to make an internal graph
+        // where things are sorted by material. Then, every frame tag the transforms that are changed
+        // as dirty to update the graph.
+        for (_, (t, r)) in world.query::<(&Transform, &Render)>().iter() {
+            if let Some(mesh) = self.assets.meshes.get(&r.mesh) {
+                for primitive in mesh.primitives.iter() {
+                    let material = self.assets.materials.get(&None).unwrap();
+                    //let material = self.assets.materials.get(&primitive.material).unwrap();
+                    let shader = self
+                        .assets
+                        .shaders
+                        .shaders
+                        .get(&material.shader_flags)
+                        .unwrap();
 
-                        shd_gate.shade(&shader, |iface, mut rdr_gate| {
-                            iface.view.update(view.to_cols_array_2d());
-                            iface.projection.update(projection.to_cols_array_2d());
+                    shd_gate.shade(&shader, |iface, mut rdr_gate| {
+                        iface.view.update(view.to_cols_array_2d());
+                        iface.projection.update(projection.to_cols_array_2d());
+                        iface.model.update(t.to_model().to_cols_array_2d());
+                        iface.u_camera.update(camera_position.into());
+
+                        self.bind_textures(pipeline, &iface, &material);
+                        if let Some((_, light)) = world.query::<&DirectionalLight>().iter().next() {
+                            iface.u_light_color.update(light.color.to_normalized());
+                            iface.u_light_direction.update(light.direction.into());
+                        } else {
+                            iface.u_light_color.update([1.0, 1.0, 1.0]);
+                            iface.u_light_direction.update([0.0, -1.0, 1.0]);
+                        }
+
+                        if let Some((_, light)) = world.query::<&AmbientLight>().iter().next() {
                             iface
-                                .model
-                                .update(node.transform.to_model().to_cols_array_2d());
-                            iface.u_Camera.update(camera_position.into());
-                            // The texture if needed.
-                            if let (
-                                Some(color_texture),
-                                Some(color_coord),
-                                Some(normal_texture),
-                                Some(normal_coord),
-                                Some(scale),
-                                Some(roughness_map),
-                                Some(roughness_coord),
-                                Some(metallic_map),
-                                Some(metallic_coord),
-                            ) = (
-                                material.albedo_texture.as_ref(),
-                                material.color_texture_coord_set,
-                                material.normal_texture.as_ref(),
-                                material.normal_texture_coord_set,
-                                material.normal_scale,
-                                material.roughness_metallic_texture.as_ref(),
-                                material.roughness_metallic_texture_coord_set,
-                                material.metallic_texture.as_ref(),
-                                material.metallic_texture_coord_set,
-                            ) {
-                                println!("HERE");
-                                let color_texture = pipeline.bind_texture(&color_texture.texture);
-                                iface.u_BaseColorSampler.update(&color_texture);
-                                iface.u_BaseColorTexCoord.update(color_coord);
-                                let normal_texture = pipeline.bind_texture(&normal_texture.texture);
-                                iface.u_NormalSampler.update(&normal_texture);
-                                iface.u_NormalTexCoord.update(normal_coord);
-                                iface.u_NormalScale.update(scale);
-                                let roughness_texture =
-                                    pipeline.bind_texture(&roughness_map.texture);
-                                iface.u_MetallicRoughnessSampler.update(&roughness_texture);
-                                iface.u_MetallicRoughnessTexCoord.update(roughness_coord);
+                                .u_ambient_light_color
+                                .update(light.color.to_normalized());
+                            iface.u_ambient_light_intensity.update(light.intensity);
+                        } else {
+                            iface.u_ambient_light_color.update([1.0, 1.0, 1.0]);
+                            iface.u_ambient_light_intensity.update(0.3);
+                        }
+                        material.apply_uniforms(&iface);
 
-                                let metallic_texture = pipeline.bind_texture(&metallic_map.texture);
-                                iface.u_MetallicSampler.update(&metallic_texture);
-                                iface.u_MetallicTexCoord.update(metallic_coord);
-                            }
-                            if let (
-                                None,
-                                None,
-                                Some(normal_texture),
-                                Some(normal_coord),
-                                Some(scale),
-                                Some(roughness_map),
-                                Some(roughness_coord),
-                            ) = (
-                                material.albedo_texture.as_ref(),
-                                material.color_texture_coord_set,
-                                material.normal_texture.as_ref(),
-                                material.normal_texture_coord_set,
-                                material.normal_scale,
-                                material.roughness_metallic_texture.as_ref(),
-                                material.roughness_metallic_texture_coord_set,
-                            ) {
-                                let normal_texture = pipeline.bind_texture(&normal_texture.texture);
-                                iface.u_NormalSampler.update(&normal_texture);
-                                iface.u_NormalTexCoord.update(normal_coord);
-                                iface.u_NormalScale.update(scale);
-                                let roughness_texture =
-                                    pipeline.bind_texture(&roughness_map.texture);
-                                iface.u_MetallicRoughnessSampler.update(&roughness_texture);
-                                iface.u_MetallicRoughnessTexCoord.update(roughness_coord);
-                            }
-
-                            //                            if let (Some(normal_texture), Some(normal_coord), Some(scale)) = (
-                            //                                material.normal_texture.as_ref(),
-                            //                                material.normal_texture_coord_set,
-                            //                                material.normal_scale,
-                            //                            ) {
-                            //                                let normal_texture = pipeline.bind_texture(&normal_texture.texture);
-                            //                                iface.normal_texture.update(&normal_texture);
-                            //                                iface.normal_texture_coord_set.update(normal_coord);
-                            //                                iface.normal_scale.update(scale);
-                            //                            }
-
-                            if let Some((_, light)) =
-                                world.query::<&DirectionalLight>().iter().next()
-                            {
-                                iface.u_LightColor.update(light.color.to_normalized());
-                                iface.u_LightDirection.update(light.direction.into());
-                            } else {
-                                iface.u_LightColor.update([1.0, 1.0, 1.0]);
-                                iface.u_LightDirection.update([0.0, -1.0, 1.0]);
-                            }
-
-                            if let Some((_, light)) = world.query::<&AmbientLight>().iter().next() {
-                                iface
-                                    .u_AmbientLightColor
-                                    .update(light.color.to_normalized());
-                                iface.u_AmbientLightIntensity.update(light.intensity);
-                            } else {
-                                iface.u_AmbientLightColor.update([1.0, 1.0, 1.0]);
-                                iface.u_AmbientLightIntensity.update(0.3);
-                            }
-                            material.apply_uniforms(&iface);
-
-                            rdr_gate.render(&RenderState::default(), |mut tess_gate| {
-                                tess_gate.render(&primitive.tess);
-                            });
+                        rdr_gate.render(&RenderState::default(), |mut tess_gate| {
+                            tess_gate.render(&primitive.tess);
                         });
-                    }
+                    });
                 }
             }
+        }
+    }
+
+    /// Need to do a big exhaustive match instead of using if lets here. If using if let, the binding
+    /// is overriden in the next if let.
+    fn bind_textures(
+        &self,
+        pipeline: &Pipeline,
+        iface: &ProgramInterface<PbrShaderInterface>,
+        material: &Material,
+    ) {
+        match (
+            &material.albedo_texture,
+            material.color_texture_coord_set,
+            &material.normal_texture,
+            material.normal_texture_coord_set,
+            material.normal_scale,
+            &material.roughness_metallic_texture,
+            material.roughness_metallic_texture_coord_set,
+        ) {
+            (Some(color_tex), Some(color_coord), None, None, None, None, None) => {
+                let color_tex = pipeline.bind_texture(&color_tex.texture);
+                iface.u_base_color_sampler.update(&color_tex);
+                iface.u_base_color_tex_coord.update(color_coord);
+            }
+            (
+                Some(color_tex),
+                Some(color_coord),
+                Some(normal_tex),
+                Some(normal_coord),
+                Some(normal_scale),
+                None,
+                None,
+            ) => {
+                let color_tex = pipeline.bind_texture(&color_tex.texture);
+                let normal_tex = pipeline.bind_texture(&normal_tex.texture);
+                iface.u_base_color_sampler.update(&color_tex);
+                iface.u_base_color_tex_coord.update(color_coord);
+                iface.u_normal_sampler.update(&normal_tex);
+                iface.u_normal_tex_coord.update(normal_coord);
+                iface.u_normal_scale.update(normal_scale);
+            }
+            (
+                Some(color_tex),
+                Some(color_coord),
+                Some(normal_tex),
+                Some(normal_coord),
+                Some(normal_scale),
+                Some(rm_tex),
+                Some(rm_coord),
+            ) => {
+                let color_tex = pipeline.bind_texture(&color_tex.texture);
+                let normal_tex = pipeline.bind_texture(&normal_tex.texture);
+                let rm_tex = pipeline.bind_texture(&rm_tex.texture);
+                iface.u_base_color_sampler.update(&color_tex);
+                iface.u_base_color_tex_coord.update(color_coord);
+                iface.u_normal_sampler.update(&normal_tex);
+                iface.u_normal_tex_coord.update(normal_coord);
+                iface.u_normal_scale.update(normal_scale);
+                iface.u_metallic_roughness_sampler.update(&rm_tex);
+                iface.u_metallic_roughness_tex_coord.update(rm_coord);
+            }
+            (None, None, Some(normal_tex), Some(normal_coord), Some(normal_scale), None, None) => {
+                let normal_tex = pipeline.bind_texture(&normal_tex.texture);
+                iface.u_normal_sampler.update(&normal_tex);
+                iface.u_normal_tex_coord.update(normal_coord);
+                iface.u_normal_scale.update(normal_scale);
+            }
+            (
+                None,
+                None,
+                Some(normal_tex),
+                Some(normal_coord),
+                Some(normal_scale),
+                Some(rm_tex),
+                Some(rm_coord),
+            ) => {
+                let normal_tex = pipeline.bind_texture(&normal_tex.texture);
+                let rm_tex = pipeline.bind_texture(&rm_tex.texture);
+                iface.u_normal_sampler.update(&normal_tex);
+                iface.u_normal_tex_coord.update(normal_coord);
+                iface.u_normal_scale.update(normal_scale);
+                iface.u_metallic_roughness_sampler.update(&rm_tex);
+                iface.u_metallic_roughness_tex_coord.update(rm_coord);
+            }
+            (None, None, None, None, None, Some(rm_tex), Some(rm_coord)) => {
+                let rm_tex = pipeline.bind_texture(&rm_tex.texture);
+                iface.u_metallic_roughness_sampler.update(&rm_tex);
+                iface.u_metallic_roughness_tex_coord.update(rm_coord);
+            }
+            _ => (),
         }
     }
 }
@@ -267,14 +300,17 @@ impl Node {
         assets: &mut Assets,
     ) -> Self {
         let mesh_id = node.mesh().map(|mesh| {
-            let mesh_index = mesh.index();
+            let mesh_id = mesh
+                .name()
+                .map(|n| n.to_string())
+                .unwrap_or(format!("mesh{}", mesh.index()));
 
-            if !assets.meshes.contains_key(&mesh_index) {
+            if !assets.meshes.contains_key(&mesh_id) {
                 let mesh = Mesh::from_gltf(surface, mesh, data, assets);
-                assets.meshes.insert(mesh_index, mesh);
+                assets.meshes.insert(mesh_id.clone(), mesh);
             }
 
-            mesh_index
+            mesh_id
         });
 
         let (translation, rotation, scale) = node.transform().decomposed();
@@ -289,24 +325,6 @@ impl Node {
 
         Self { transform, mesh_id }
     }
-
-    //    pub fn render<S>(
-    //        &self,
-    //        iface: &ProgramInterface<PbrShaderInterface>,
-    //        tess_gate: &mut TessGate<S>,
-    //        assets: &Assets,
-    //    ) where
-    //        S: GraphicsContext,
-    //    {
-    //        if let Some(mesh_id) = self.mesh_id {
-    //            if let Some(mesh) = assets.meshes.get(&mesh_id) {
-    //                iface
-    //                    .model
-    //                    .update(self.transform.to_model().to_cols_array_2d());
-    //                mesh.render(iface, tess_gate, assets);
-    //            }
-    //        }
-    //    }
 }
 
 // read the texture into memory as a whole bloc (i.e. no streaming)

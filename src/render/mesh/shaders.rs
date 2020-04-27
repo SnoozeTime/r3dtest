@@ -13,7 +13,6 @@ bitflags! {
         const HAS_COLOR_TEXTURE = 0b0000001;
         const HAS_NORMAL_TEXTURE = 0b0000010;
         const HAS_ROUGHNESS_METALLIC_MAP = 0b0000100;
-        const HAS_METALLIC_MAP = 0b0001000;
     }
 }
 
@@ -32,10 +31,6 @@ impl ShaderFlags {
 
         if self.contains(ShaderFlags::HAS_ROUGHNESS_METALLIC_MAP) {
             defines.push("HAS_ROUGHNESS_METALLIC_MAP".to_string());
-        }
-
-        if self.contains(ShaderFlags::HAS_METALLIC_MAP) {
-            defines.push("HAS_METALLIC_MAP".to_string());
         }
 
         defines

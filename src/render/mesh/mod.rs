@@ -4,7 +4,7 @@ use crate::ecs::Transform;
 use crate::gameplay::player::MainPlayer;
 use crate::render::mesh::mesh::Mesh;
 use crate::render::mesh::primitive::Primitive;
-use crate::render::mesh::scene::Scene;
+use crate::render::mesh::scene::{MeshId, Scene};
 use crate::render::shaders::Shaders;
 use luminance::context::GraphicsContext;
 use luminance::linear::M44;
@@ -18,12 +18,12 @@ use luminance_derive::{Semantics, UniformInterface, Vertex};
 use luminance_glfw::GlfwSurface;
 
 pub mod deferred;
-mod material;
-mod mesh;
-mod primitive;
-mod scene;
+pub mod material;
+pub mod mesh;
+pub mod primitive;
+pub mod scene;
 mod shaders;
-mod texture;
+pub mod texture;
 
 type ImportData = (
     gltf::Document,
@@ -116,93 +116,45 @@ pub struct PbrShaderInterface {
     #[uniform(unbound)]
     pub model: Uniform<M44>,
 
-    #[uniform(unbound)]
-    pub u_Camera: Uniform<[f32; 3]>,
+    #[uniform(name = "u_Camera", unbound)]
+    pub u_camera: Uniform<[f32; 3]>,
 
     // material.
-    #[uniform(unbound)]
-    pub u_BaseColorFactor: Uniform<[f32; 3]>,
-    #[uniform(unbound)]
-    pub u_MetallicRoughnessValues: Uniform<[f32; 2]>,
-    #[uniform(unbound)]
-    pub u_AlphaBlend: Uniform<f32>,
-    #[uniform(unbound)]
-    pub u_AlphaCutoff: Uniform<f32>,
+    #[uniform(name = "u_BaseColorFactor", unbound)]
+    pub u_base_color_factor: Uniform<[f32; 3]>,
+    #[uniform(name = "u_MetallicRoughnessValues", unbound)]
+    pub u_metallic_roughness_values: Uniform<[f32; 2]>,
+    #[uniform(name = "u_AlphaBlend", unbound)]
+    pub u_alpha_blend: Uniform<f32>,
+    #[uniform(name = "u_AlphaCutoff", unbound)]
+    pub u_alpha_cutoff: Uniform<f32>,
     // optional.
-    #[uniform(unbound)]
-    pub u_BaseColorSampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
-    #[uniform(unbound)]
-    pub u_BaseColorTexCoord: Uniform<u32>,
+    #[uniform(name = "u_BaseColorSampler", unbound)]
+    pub u_base_color_sampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
+    #[uniform(name = "u_BaseColorTexCoord", unbound)]
+    pub u_base_color_tex_coord: Uniform<u32>,
 
     // optional.
-    #[uniform(unbound)]
-    pub u_NormalSampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
-    #[uniform(unbound)]
-    pub u_NormalTexCoord: Uniform<u32>,
-    #[uniform(unbound)]
-    pub u_NormalScale: Uniform<f32>,
+    #[uniform(name = "u_NormalSampler", unbound)]
+    pub u_normal_sampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
+    #[uniform(name = "u_NormalTexCoord", unbound)]
+    pub u_normal_tex_coord: Uniform<u32>,
+    #[uniform(name = "u_NormalScale", unbound)]
+    pub u_normal_scale: Uniform<f32>,
 
     // optional.
-    #[uniform(unbound)]
-    pub u_MetallicRoughnessSampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
-    #[uniform(unbound)]
-    pub u_MetallicRoughnessTexCoord: Uniform<u32>,
-
-    // optional.
-    #[uniform(unbound)]
-    pub u_MetallicSampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
-    #[uniform(unbound)]
-    pub u_MetallicTexCoord: Uniform<u32>,
+    #[uniform(name = "u_MetallicRoughnessSampler", unbound)]
+    pub u_metallic_roughness_sampler: Uniform<&'static BoundTexture<'static, Dim2, NormUnsigned>>,
+    #[uniform(name = "u_MetallicRoughnessTexCoord", unbound)]
+    pub u_metallic_roughness_tex_coord: Uniform<u32>,
 
     // light sources.
-    #[uniform(unbound)]
-    pub u_LightDirection: Uniform<[f32; 3]>,
-    #[uniform(unbound)]
-    pub u_LightColor: Uniform<[f32; 3]>,
-    #[uniform(unbound)]
-    pub u_AmbientLightColor: Uniform<[f32; 3]>,
-    #[uniform(unbound)]
-    pub u_AmbientLightIntensity: Uniform<f32>,
-}
-
-pub struct GltfSceneRenderer {
-    scene: Scene,
-}
-
-impl GltfSceneRenderer {
-    pub fn new(surface: &mut GlfwSurface) -> Self {
-        let import = gltf::import("material.gltf").unwrap();
-        let g_scene = import.0.scenes().next().unwrap();
-        let scene = Scene::from_gltf(surface, &g_scene, &import);
-
-        Self { scene }
-    }
-    //
-    //    pub fn render<S>(
-    //        &self,
-    //        projection: &glam::Mat4,
-    //        view: &glam::Mat4,
-    //        world: &hecs::World,
-    //        shd_gate: &mut ShadingGate<S>,
-    //        shaders: &Shaders,
-    //    ) where
-    //        S: GraphicsContext,
-    //    {
-    //        if let Some((_, (t, _))) = world.query::<(&Transform, &MainPlayer)>().iter().next() {
-    //            shd_gate.shade(&shaders.scene_program, |iface, mut rdr_gate| {
-    //                iface.view.update(view.to_cols_array_2d());
-    //                iface.projection.update(projection.to_cols_array_2d());
-    //                iface.camera_position.update(t.translation.into());
-    //
-    //
-    //                for node in self.scene.nodes {
-    //
-    //                }
-    //
-    //                rdr_gate.render(&RenderState::default(), |mut tess_gate| {
-    //                    // self.scene.render(&iface, &mut tess_gate);
-    //                });
-    //            });
-    //        }
-    //    }
+    #[uniform(name = "u_LightDirection", unbound)]
+    pub u_light_direction: Uniform<[f32; 3]>,
+    #[uniform(name = "u_LightColor", unbound)]
+    pub u_light_color: Uniform<[f32; 3]>,
+    #[uniform(name = "u_AmbientLightColor", unbound)]
+    pub u_ambient_light_color: Uniform<[f32; 3]>,
+    #[uniform(name = "u_AmbientLightIntensity", unbound)]
+    pub u_ambient_light_intensity: Uniform<f32>,
 }

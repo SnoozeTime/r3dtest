@@ -57,6 +57,10 @@ async-std = "1.0"
 
 bitflags = "1.2.1"
 
+# imgui renderer for luminance
+imgui_luminance = { git = "https://github.com/SnoozeTime/imgui_luminance" }
+imgui = "0.3.0"
+
 [dependencies.gltf]
 version = "0.15"
 features = ["extras", "names"]
@@ -65,3 +69,5 @@ features = ["extras", "names"]
 version = "0.8.4"
 features = ["serde"]
 
+[profile.release]
+debug = true

@@ -14,6 +14,25 @@ use nalgebra::UnitQuaternion;
 mod components;
 use crate::colors::RgbColor;
 use components::*;
+use imgui::im_str;
+
+/// Keep the state of the game editor.
+pub struct Editor {}
+
+impl Editor {
+    pub fn show_components(&self, ui: &imgui::Ui, world: &hecs::World) {
+        imgui::Window::new(im_str!("Entities"))
+            .opened(&mut true)
+            .position([0.0, 0.0], imgui::Condition::Always)
+            .build(ui, || {
+                for (e, _) in world.iter() {
+                    ui.text(im_str!("{}", e.to_bits()));
+                }
+            });
+    }
+}
+
+pub fn render_editor(ui: &imgui::Ui, world: &mut hecs::World) {}
 
 pub trait EditorComponent: Default {
     type Message;

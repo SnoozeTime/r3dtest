@@ -152,7 +152,7 @@ fn main_loop(mut surface: GlfwSurface) {
         // ----------------------------------------------------
         // RENDERING
         // ----------------------------------------------------
-        renderer.render(&mut surface, &world, &resources);
+        renderer.render(&mut surface, &world, &resources, None);
 
         // remove all old entities.
         garbage_collector.collect_without_physics(&mut world, &resources);
