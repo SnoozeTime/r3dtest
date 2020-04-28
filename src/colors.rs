@@ -45,6 +45,15 @@ impl RgbColor {
     }
 }
 
+impl From<[f32; 4]> for RgbColor {
+    fn from(c: [f32; 4]) -> Self {
+        let r = (c[0] * 255.0).round().min(255.0).max(0.0) as u8;
+        let g = (c[1] * 255.0).round().min(255.0).max(0.0) as u8;
+        let b = (c[2] * 255.0).round().min(255.0).max(0.0) as u8;
+        Self { r, g, b }
+    }
+}
+
 impl Deltable for RgbColor {
     type Delta = RgbColor;
 

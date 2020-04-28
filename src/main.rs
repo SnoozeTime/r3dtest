@@ -165,7 +165,8 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
     let mut imgui_renderer = imgui_luminance::Renderer::new(&mut surface, &mut imgui);
     imgui.set_ini_filename(None);
 
-    let mut editor = r3dtest::editor::Editor::default();
+    let size = surface.size();
+    let mut editor = r3dtest::editor::Editor::new(size[0], size[1]);
 
     'app: loop {
         {
@@ -258,7 +259,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
 
         // render the editor.
         let ui = imgui.frame();
-        editor.show_components(&ui, &world);
+        editor.show_components(&ui, &world, &mut physics, &mut resources);
         //ui.show_demo_window(&mut true);
         let draw_data = ui.render();
         imgui_renderer.prepare(&mut surface, draw_data);

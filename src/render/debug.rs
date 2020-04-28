@@ -72,13 +72,25 @@ pub fn update_debug_components(world: &mut hecs::World, physics: &PhysicWorld) {
     let mut to_add = vec![];
 
     for (e, rb) in world.query::<&RigidBody>().iter() {
-        if world.get::<DebugRender>(e).is_err() {
-            // add component to entity.
-            if let Some(shape) = physics.get_shape(rb.handle.unwrap()) {
-                let Shape::AABB(extends) = shape;
-                to_add.push((e, extends));
+        if let Some(shape) = physics.get_shape(rb.handle.unwrap()) {
+            match world.get_mut::<DebugRender>(e) {
+                Ok(mut debug_render) => {
+                    let Shape::AABB(extends) = shape;
+                    *debug_render = DebugRender::Aabb(extends);
+                }
+                _ => {
+                    let Shape::AABB(extends) = shape;
+                    to_add.push((e, extends));
+                }
             }
         }
+        //        if world.get::<DebugRender>(e).is_err() {
+        //            // add component to entity.
+        //            if let Some(shape) = physics.get_shape(rb.handle.unwrap()) {
+        //                let Shape::AABB(extends) = shape;
+        //                to_add.push((e, extends));
+        //            }
+        //        }
     }
 
     debug!("TO ADD {:?}", to_add);

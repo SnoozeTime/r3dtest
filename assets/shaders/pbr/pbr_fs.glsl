@@ -35,7 +35,8 @@ uniform int u_BaseColorTexCoord;
 // direct lights
 uniform vec3 u_LightDirection;
 uniform vec3 u_LightColor;
-
+uniform vec3 u_AmbientLightColor;
+uniform float u_AmbientLightIntensity;
 
 const float PI = 3.14159265359;
 
@@ -181,10 +182,11 @@ void main() {
     // reflectance equation
     vec3 Lo = vec3(0.0);
     // For each light, we want to calculate the Cook-Torrance specular BRDF
-    for (int i = 0; i < 4; i++) {
-        vec3 L = normalize(lights[i] - v_Position);
+    for (int i = 0; i < 1; i++) {
+        // DIRECTIONAL LIGHT
+        vec3 L = normalize(u_LightDirection); // - v_Position);
         vec3 H = normalize(V + L);
-        float distance = length(lights[i] - v_Position);
+        //float distance = length(u_LightDirection - v_Position);
         //float attenuation = 1.0 / (distance * distance);
         vec3 radiance = u_LightColor; // * attenuation;
 
@@ -216,7 +218,7 @@ void main() {
     }
 
     // stop loop here.
-    vec3 ambient = vec3(0.03) * albedo;
+    vec3 ambient = u_AmbientLightColor * vec3(u_AmbientLightIntensity) * albedo;
     vec3 color   = ambient + Lo;
     color = color / (color + vec3(1.0));
     fragColor = vec4(pow(color, vec3(1.0/2.2)), 1.0);

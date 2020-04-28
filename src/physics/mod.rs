@@ -176,6 +176,19 @@ impl PhysicWorld {
         BodyIndex(rb_handle, collider_handle)
     }
 
+    /// call that when the component has been updated and the physics system needs to be synchronised.
+    /// Not the most beautiful :D
+    pub fn update_rigidbody_component(
+        &mut self,
+        transform: &Transform,
+        body_component: &mut RigidBody,
+    ) -> BodyIndex {
+        if let Some(h) = body_component.handle {
+            self.remove_body(h);
+        }
+        self.add_body(transform, body_component)
+    }
+
     pub fn remove_body(&mut self, h: BodyIndex) {
         self.bodies.remove(h.0);
         // TODO check if need to remove collider.

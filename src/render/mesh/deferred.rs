@@ -19,7 +19,6 @@ const ALL_BLENDING_MODE: [(Equation, Factor, Factor); 2] = [
 impl DeferredRenderer {
     pub fn new(surface: &mut GlfwSurface) -> Self {
         let asset_path = std::env::var("ASSET_PATH").unwrap() + "material.gltf";
-        println!("Will import from {}", asset_path);
         let import = gltf::import(asset_path).unwrap();
         let g_scene = import.0.scenes().next().unwrap();
         let scene = Scene::from_gltf(surface, &g_scene, &import);
