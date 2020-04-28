@@ -13,7 +13,6 @@ luminance-glfw = "0.12"
 luminance-windowing = "0.8"
 image = "0.21.0"
 base64 = "0.11.0"
-
 wavefront_obj = "7"
 thiserror = "1.0.13"
 log = "0.4.8"
@@ -45,16 +44,12 @@ futures-util = "0.3.4"
 glyph_brush = "0.6.3"
 
 # Physics from the community :)
-nalgebra   = "0.18"
-ncollide3d = "0.20"
-nphysics3d = { path = "../nphysics/build/nphysics3d"}
+nalgebra   = "0.20"
+ncollide3d = "0.22"
+# nphysics3d = "0.14.0" #  { path = "../nphysics/build/nphysics3d"}
+nphysics3d = { git = "https://github.com/rustsim/nphysics", rev = "7fb7b7b" }
 
 rand = "0.7.3"
-
-# For the RON editor.
-iced = "0.1"
-async-std = "1.0"
-
 bitflags = "1.2.1"
 
 # imgui renderer for luminance

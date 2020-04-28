@@ -95,7 +95,8 @@ pub struct PhysicWorld {
     bodies: DefaultBodySet<f32>,
     colliders: DefaultColliderSet<f32>,
     //  joint_constraints: DefaultJointConstraintSet<f32, DefaultBodySet<f32>>,
-    force_generators: DefaultForceGeneratorSet<f32, DefaultBodySet<f32>>,
+
+    //force_generators: DefaultForceGeneratorSet<f32, DefaultBodySet<f32>>,
     //ground_handle: BodyIndex,
 }
 
@@ -116,7 +117,7 @@ impl PhysicWorld {
         let bodies = DefaultBodySet::new();
         let colliders = DefaultColliderSet::new();
         // let joint_constraints = DefaultJointConstraintSet::new();
-        let force_generators = DefaultForceGeneratorSet::new();
+        //let force_generators = DefaultForceGeneratorSet::new();
 
         Self {
             mechanical_world,
@@ -124,25 +125,28 @@ impl PhysicWorld {
             bodies,
             colliders,
             //joint_constraints,
-            force_generators,
+            //force_generators,
         }
     }
 
     pub fn step(&mut self) {
+        // FIXME figure that out. needs to be stored in the world...
         let mut joint = DefaultJointConstraintSet::new();
+        let mut force_generators = DefaultForceGeneratorSet::new();
+
         self.mechanical_world.step(
             &mut self.geometrical_world,
             &mut self.bodies,
             &mut self.colliders,
             &mut joint,
-            &mut self.force_generators,
+            &mut force_generators,
         );
     }
 
     pub fn add_body(&mut self, transform: &Transform, body_component: &mut RigidBody) -> BodyIndex {
         // Shape is a cuboid :) for now TODO modify that
         info!("Will add body to physic world = {:?}", body_component);
-        let shape_handle = match body_component.shape {
+        let shape_handle: ShapeHandle<f32> = match body_component.shape {
             Shape::AABB(aabb) => {
                 ShapeHandle::new(Cuboid::new(Vector3::new(aabb.x(), aabb.y(), aabb.z())))
             }
@@ -339,9 +343,10 @@ impl PhysicWorld {
             Point3::new(center_offset.x(), center_offset.y(), center_offset.z()),
             Vector3::new(d.x(), d.y(), d.z()),
         );
+        // FIXME have a nice value for max toi.
         let interference =
             self.geometrical_world
-                .interferences_with_ray(&self.colliders, &ray, &groups);
+                .interferences_with_ray(&self.colliders, &ray, 1000.0, &groups);
         // (Objects::CollisionObjectHandle, &'a Objects::CollisionObject, RayIntersection<N>)
         let mut results = vec![];
         for (a, b, c) in interference {
