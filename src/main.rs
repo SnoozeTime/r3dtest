@@ -2,15 +2,11 @@ use luminance_glfw::{Action, GlfwSurface, Key, Surface, WindowDim, WindowOpt};
 use std::process::exit;
 use std::time::{Duration, Instant};
 
+use imgui::{Context, FontConfig, FontGlyphRanges, FontSource};
 #[allow(unused_imports)]
 use log::{debug, error, info};
-use serde_derive::{Deserialize, Serialize};
-
-use crate::ControllerMode::Editor;
-use imgui::{Context, FontConfig, FontGlyphRanges, FontSource};
 use luminance_windowing::CursorMode;
 use r3dtest::animation::AnimationSystem;
-use r3dtest::controller::fps::FpsController;
 use r3dtest::controller::free::FreeController;
 use r3dtest::controller::{client, Controller};
 use r3dtest::ecs::WorldLoader;
@@ -28,12 +24,12 @@ use r3dtest::render::assets::AssetManager;
 use r3dtest::render::debug::update_debug_components;
 use r3dtest::render::{RenderConfig, Renderer};
 use r3dtest::{
-    ecs, ecs::Transform, event::GameEvent, input::Input, physics::RigidBody, resources::Resources,
+    ecs::Transform, event::GameEvent, input::Input, physics::RigidBody, resources::Resources,
 };
 use serde::de::DeserializeOwned;
+use serde_derive::{Deserialize, Serialize};
 use shrev::EventChannel;
 use std::fs::{self};
-use std::thread;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WindowConfig {
@@ -146,7 +142,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
     let mut controller_mode = ControllerMode::Player;
     let mut previous_controller_mode = ControllerMode::Player;
     let free_controller = FreeController;
-    let main_player_entity = world
+    let _ = world
         .query::<&MainPlayer>()
         .iter()
         .map(|(e, _)| e)
@@ -169,11 +165,9 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
     let mut imgui_renderer = imgui_luminance::Renderer::new(&mut surface, &mut imgui);
     imgui.set_ini_filename(None);
 
-    let mut editor = r3dtest::editor::Editor {};
+    let mut editor = r3dtest::editor::Editor::default();
 
     'app: loop {
-        let start_of_frame = Instant::now();
-
         {
             let mut input = resources.fetch_mut::<Input>().unwrap();
 
@@ -288,9 +282,6 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         renderer.check_updates(&mut surface, &world, &resources);
 
         // FIXME
-
-        let end_of_frame = Instant::now() - start_of_frame;
-        let start_of_render = Instant::now();
         surface.swap_buffers();
         let now = Instant::now();
         let frame_duration = now - current_time;
@@ -298,8 +289,6 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
             //thread::sleep(dt - frame_duration);
         }
         current_time = now;
-
-        let end_of_frame = Instant::now() - start_of_render;
     }
 }
 

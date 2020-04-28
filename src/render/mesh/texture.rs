@@ -2,18 +2,15 @@
 
 use crate::render::mesh::ImportData;
 use gltf::image::Source;
-use std::path::Path;
-use std::{fs, io};
-
-use iced::Application;
 use image;
-use image::DynamicImage::*;
 use image::GenericImageView;
 use image::ImageFormat::{JPEG, PNG};
 use image::{DynamicImage, FilterType};
-use luminance::pixel::{NormRGB8UI, Pixel, R8UI, RG8UI, RGBA8UI};
+use luminance::pixel::NormRGB8UI;
 use luminance::texture::{Dim2, GenMipmaps, MagFilter, MinFilter, Sampler, Wrap};
 use luminance_glfw::GlfwSurface;
+use std::path::Path;
+use std::{fs, io};
 
 // TODO use enum instead
 pub struct Texture {
@@ -102,7 +99,6 @@ impl Texture {
         // TODO: handle I/O problems
         let dyn_img = img.expect("Image loading failed.");
         match dyn_img {
-            /// Each pixel in this image is 8-bit Rgb
             DynamicImage::ImageRgb8(_) => (),
             i => panic!("Image type not supported {:?}", i.color()),
         }
@@ -155,7 +151,7 @@ impl Texture {
             gltf::texture::WrappingMode::ClampToEdge => sampler.wrap_t = Wrap::ClampToEdge,
             gltf::texture::WrappingMode::Repeat => sampler.wrap_t = Wrap::Repeat,
         }
-        let mut tex: luminance::texture::Texture<Dim2, NormRGB8UI> =
+        let tex: luminance::texture::Texture<Dim2, NormRGB8UI> =
             luminance::texture::Texture::new(surface, [width, height], 0, sampler)
                 .expect("luminance texture creation");
 

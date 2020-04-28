@@ -1,21 +1,11 @@
 //! Mesh are read from a GLTF file. A mesh can be made of multiple primitives.
 //! Each primitive will have a Tess.
-use crate::ecs::Transform;
-use crate::gameplay::player::MainPlayer;
-use crate::render::mesh::mesh::Mesh;
-use crate::render::mesh::primitive::Primitive;
-use crate::render::mesh::scene::{MeshId, Scene};
-use crate::render::shaders::Shaders;
-use luminance::context::GraphicsContext;
 use luminance::linear::M44;
-use luminance::pipeline::{BoundTexture, ShadingGate};
+use luminance::pipeline::BoundTexture;
 use luminance::pixel::NormUnsigned;
-use luminance::render_state::RenderState;
 use luminance::shader::program::{Program, Uniform};
-use luminance::tess::Tess;
 use luminance::texture::Dim2;
 use luminance_derive::{Semantics, UniformInterface, Vertex};
-use luminance_glfw::GlfwSurface;
 
 pub mod deferred;
 pub mod material;
@@ -96,16 +86,6 @@ pub struct ShaderInterface {
     pub emissive: Uniform<[f32; 3]>,
 }
 
-/**
-// material
-uniform vec3  albedo;
-uniform float metallic;
-uniform float roughness;
-uniform float ao;
-// direct lights
-uniform vec3 lightPositions[4];
-uniform vec3 lightColors[4];
-**/
 #[derive(UniformInterface)]
 pub struct PbrShaderInterface {
     // matrix for the position

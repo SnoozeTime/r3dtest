@@ -17,8 +17,6 @@ pub mod render;
 pub mod resources;
 pub mod scene;
 
-use log::debug;
-
 #[macro_export]
 macro_rules! timed {
     ($val:expr) => {
@@ -27,8 +25,10 @@ macro_rules! timed {
         match std::time::Instant::now() {
             now => match $val {
                 tmp => {
+                    use log::debug;
+
                     let elapsed = (std::time::Instant::now() - now).as_millis();
-                    eprintln!(
+                    debug!(
                         "[{}:{}] {} = {:#?}",
                         file!(),
                         line!(),

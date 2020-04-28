@@ -6,14 +6,12 @@ use std::collections::HashMap;
 extern crate nalgebra as na;
 use self::na::Isometry3;
 use crate::ecs::Transform;
-use glam::Quat;
 use na::Point3;
 use na::Vector3;
-use ncollide3d::bounding_volume::AABB;
 use ncollide3d::pipeline::CollisionGroups;
-use ncollide3d::query::{Contact, Proximity, Ray};
-use ncollide3d::shape::{ConvexHull, Cuboid, ShapeHandle};
-use nphysics3d::algebra::{Force3, ForceType, Velocity3};
+use ncollide3d::query::Ray;
+use ncollide3d::shape::{Cuboid, ShapeHandle};
+use nphysics3d::algebra::{Force3, ForceType};
 use nphysics3d::force_generator::DefaultForceGeneratorSet;
 use nphysics3d::joint::DefaultJointConstraintSet;
 use nphysics3d::object::{
@@ -306,8 +304,8 @@ impl PhysicWorld {
                 self.geometrical_world
                     .interferences_with_aabb(&self.colliders, &shape, &CollisionGroups::default())
                     .filter(|(c, _)| *c != h.1)
-                    .filter(|(c, obj)| self.bodies.get(obj.body()).unwrap().is_static())
-                    .filter_map(|(c, obj)| {
+                    .filter(|(_, obj)| self.bodies.get(obj.body()).unwrap().is_static())
+                    .filter_map(|(_, obj)| {
                         ncollide3d::query::contact(
                             &body.position(),
                             coll.shape(),

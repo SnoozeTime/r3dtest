@@ -5,7 +5,6 @@ use super::{
 use crate::render::mesh::material::Material;
 use crate::render::mesh::scene::{Assets, MaterialId};
 use crate::render::mesh::ImportData;
-use luminance::pipeline::TessGate;
 use luminance::tess::{Mode, Tess, TessBuilder};
 use luminance_glfw::GlfwSurface;
 

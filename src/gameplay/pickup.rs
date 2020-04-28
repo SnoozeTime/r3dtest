@@ -80,7 +80,7 @@ impl PickUpSystem {
                 // Send events and shit.
                 let maybe_ev = match pick_up {
                     PickUp::Gun(gt) => {
-                        let inv = world
+                        let _inv = world
                             .get::<GunInventory>(player_entity)
                             .expect("Player should have gun inventory");
                         Some(GameEvent::PickupGun {

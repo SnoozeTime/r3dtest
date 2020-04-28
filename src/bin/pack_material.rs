@@ -1,3 +1,4 @@
+#![allow(warnings)]
 //! pack roughness map and metallic map into one texture (g for roughness and b for metallic).
 //! Usage: `cargo run --bin pack_material -- roughness.png metallic.png`
 use image::Pixel;

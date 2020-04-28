@@ -8,7 +8,7 @@ use glam::{Mat4, Quat, Vec3};
 use hecs::World;
 use luminance::context::GraphicsContext;
 use luminance::linear::M44;
-use luminance::pipeline::{Pipeline, ShadingGate};
+use luminance::pipeline::ShadingGate;
 use luminance::render_state::RenderState;
 use luminance::shader::program::Uniform;
 use luminance::tess::{Mode, Tess, TessBuilder, TessSliceIndex};
@@ -84,8 +84,6 @@ impl ParticleEmitter {
         color: RgbColor,
         life: Option<f32>,
     ) -> Self {
-        let mut rng = rand::thread_rng();
-
         Self {
             particles: vec![],
             position,

@@ -1,13 +1,10 @@
-use luminance::context::GraphicsContext;
-use luminance::tess::{Mode, Tess, TessBuilder, TessSliceIndex};
-use luminance_derive::{Semantics, Vertex};
-use luminance_glfw::Surface;
-
 use imgui::DrawData;
 #[allow(unused_imports)]
 use log::{debug, error, info};
+use luminance::context::GraphicsContext;
 use luminance::pipeline::{BoundTexture, PipelineState};
-use luminance::render_state::RenderState;
+use luminance_derive::{Semantics, Vertex};
+use luminance_glfw::Surface;
 use serde_derive::{Deserialize, Serialize};
 pub mod assets;
 pub mod billboard;
@@ -28,7 +25,6 @@ use crate::net::snapshot::Deltable;
 use crate::render::assets::AssetManager;
 use crate::render::billboard::BillboardRenderer;
 use crate::render::debug::DebugRenderer;
-use crate::render::lighting::{Emissive, LightingSystem};
 use crate::render::mesh::deferred::DeferredRenderer;
 use crate::render::particle::ParticleSystem;
 use crate::render::shaders::Shaders;
@@ -41,7 +37,7 @@ use hecs::World;
 use luminance::framebuffer::Framebuffer;
 use luminance::pixel::{Depth32F, Floating, RGBA32F};
 use luminance::shader::program::Uniform;
-use luminance::texture::{Dim2, Sampler};
+use luminance::texture::Dim2;
 use luminance_derive::UniformInterface;
 use luminance_glfw::GlfwSurface;
 use shrev::{EventChannel, ReaderId};
@@ -119,15 +115,13 @@ pub type OffscreenBuffer = Framebuffer<Dim2, (RGBA32F, RGBA32F, RGBA32F, RGBA32F
 pub struct Renderer {
     sprite_renderer: SpriteRenderer,
     text_renderer: TextRenderer,
-    billboard_renderer: BillboardRenderer,
+    _billboard_renderer: BillboardRenderer,
     debug_renderer: DebugRenderer,
     particle_renderer: ParticleSystem,
-    light_renderer: LightingSystem,
-    skybox_renderer: SkyboxRenderer,
+    _skybox_renderer: SkyboxRenderer,
     deferred_pbr_renderer: DeferredRenderer,
     backbuffer: Framebuffer<Dim2, (), ()>,
-    quad: Tess,
-    offscreen_buffer: OffscreenBuffer,
+    // offscreen_buffer: OffscreenBuffer,
     shaders: Shaders,
 
     projection: glam::Mat4,
@@ -166,18 +160,12 @@ impl Renderer {
         let billboard_renderer = BillboardRenderer::new(surface);
         let text_renderer = TextRenderer::new(surface, &mut glyph_brush);
         let debug_renderer = DebugRenderer::new(surface);
-        let light_renderer = LightingSystem::new(surface);
         let skybox_renderer = SkyboxRenderer::new(surface, render_config.sky_color);
         let backbuffer = surface.back_buffer().unwrap();
         let rdr_id = {
             let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
             chan.register_reader()
         };
-        let quad = TessBuilder::new(surface)
-            .set_vertex_nb(4)
-            .set_mode(Mode::TriangleFan)
-            .build()
-            .unwrap();
         let shaders = Shaders::new();
 
         let projection = glam::Mat4::perspective_rh_gl(
@@ -188,29 +176,26 @@ impl Renderer {
         );
 
         // offscreen buffer that we will render in the first place
-        let (w, h) = (backbuffer.width(), backbuffer.height());
-        let offscreen_buffer =
-            OffscreenBuffer::new(surface, [w as u32, h as u32], 0, Sampler::default())
-                .expect("framebuffer creation");
+        //        let (w, h) = (backbuffer.width(), backbuffer.height());
+        //        let offscreen_buffer =
+        //            OffscreenBuffer::new(surface, [w as u32, h as u32], 0, Sampler::default())
+        //                .expect("framebuffer creation");
 
         Self {
             sprite_renderer,
             particle_renderer,
-            billboard_renderer,
+            _billboard_renderer: billboard_renderer,
             text_renderer,
             debug_renderer,
-            light_renderer,
             deferred_pbr_renderer,
-            skybox_renderer,
+            _skybox_renderer: skybox_renderer,
             backbuffer,
-            offscreen_buffer,
             shaders,
             projection,
             view: glam::Mat4::identity(),
             glyph_brush,
             rdr_id,
             debug: true,
-            quad,
         }
     }
 
@@ -286,82 +271,12 @@ impl Renderer {
             }
         };
 
-        // I - FIRST RENDER THE DIFFUSE/DEPTH TO OFFSCREEN BUFFER
-        // =========================================================================================
-        self.deferred_pbr_renderer.render_offscreen(
-            surface,
-            &self.projection,
-            &self.view,
-            world,
-            &self.shaders,
-        );
-        //        surface.pipeline_builder().pipeline(
-        //            &self.offscreen_buffer,
-        //            &PipelineState::default().set_clear_color(color),
-        //            |pipeline, mut shd_gate| {
-        //                shd_gate.shade(&self.shaders.regular_program, |iface, mut rdr_gate| {
-        //                    iface.projection.update(self.projection.to_cols_array_2d());
-        //                    iface.view.update(self.view.to_cols_array_2d());
-        //                    for (e, (transform, mesh_name, color, emissive)) in world
-        //                        .query::<(&Transform, &Render, &RgbColor, Option<&Emissive>)>()
-        //                        .iter()
-        //                    {
-        //                        if !mesh_name.enabled {
-        //                            continue;
-        //                        }
-        //
-        //                        if let Ok(_) = world.get::<MainPlayer>(e) {
-        //                            continue; // do not render yourself.
-        //                        }
-        //
-        //                        if let Some(em) = emissive {
-        //                            iface.emissive.update(em.color.to_normalized());
-        //                        } else {
-        //                            iface.emissive.update([0.0, 0.0, 0.0]);
-        //                        }
-        //
-        //                        rdr_gate.render(&RenderState::default(), |mut tess_gate| {
-        //                            iface.model.update(transform.to_model().to_cols_array_2d());
-        //                            iface.color.update(color.to_normalized());
-        //                            let mesh = assets.meshes.get(&mesh_name.mesh).unwrap();
-        //                            tess_gate.render(mesh.slice(..));
-        //                        });
-        //                    }
-        //                });
-        //
-        //                self.particle_renderer.render(
-        //                    &self.projection,
-        //                    &self.view,
-        //                    &mut shd_gate,
-        //                    world,
-        //                    &self.shaders,
-        //                );
-        //
-        //                self.billboard_renderer.render(
-        //                    &self.projection,
-        //                    &self.view,
-        //                    &pipeline,
-        //                    &mut shd_gate,
-        //                    world,
-        //                    &assets.sprites,
-        //                    &self.shaders,
-        //                );
-        //            },
-        //        );
-
-        // II - Render to screen !
+        // I - Render to screen !
         // =========================================================================================
         surface.pipeline_builder().pipeline(
             &self.backbuffer,
             &PipelineState::default().set_clear_color(color),
             |pipeline, mut shd_gate| {
-                self.light_renderer.render(
-                    &pipeline,
-                    &mut shd_gate,
-                    world,
-                    &self.offscreen_buffer,
-                    &self.shaders,
-                );
                 //                self.skybox_renderer.render(
                 //                    &pipeline,
                 //                    &mut shd_gate,
@@ -386,7 +301,6 @@ impl Renderer {
                     );
                 }
 
-                //
                 if should_render_player_ui {
                     self.sprite_renderer.render(
                         &pipeline,

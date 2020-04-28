@@ -1,5 +1,4 @@
 use crate::colors;
-use crate::colors::RgbColor;
 use crate::ecs::Transform;
 use crate::event::GameEvent;
 use crate::gameplay::player::Player;

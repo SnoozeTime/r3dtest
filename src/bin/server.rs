@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]

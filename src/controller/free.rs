@@ -1,7 +1,7 @@
 use crate::camera::Camera;
 use crate::controller::Fps;
 use crate::ecs::Transform;
-use crate::gameplay::player::{MainPlayer, Player};
+use crate::gameplay::player::MainPlayer;
 use crate::input::Input;
 use crate::resources::Resources;
 use luminance_glfw::Key;
@@ -10,7 +10,7 @@ pub struct FreeController;
 
 impl FreeController {
     pub fn process_input(&self, world: &mut hecs::World, resources: &mut Resources) {
-        if let Some((e, (transform, camera, _, fps))) = world
+        if let Some((_, (transform, camera, _, fps))) = world
             .query::<(&mut Transform, &mut Camera, &MainPlayer, &Fps)>()
             .iter()
             .next()

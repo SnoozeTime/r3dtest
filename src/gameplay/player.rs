@@ -265,15 +265,15 @@ impl PlayerSystem {
             let mut p = world
                 .get_mut::<Player>(player)
                 .expect("Player entity should have a player component");
-            let mut r = world
-                .get_mut::<Billboard>(player)
-                .expect("Player entity should have a billboard component");
+            //            let mut r = world
+            //                .get_mut::<Billboard>(player)
+            //                .expect("Player entity should have a billboard component");
 
             h.current = h.max;
-            r.enabled = true;
+            // r.enabled = true;
             p.state = PlayerState::Alive;
 
-            debug!("Player state now {:?} / {:?} / {:?}", *h, *r, *p);
+            debug!("Player state now {:?} / {:?}", *h, *p);
         }
     }
 }

@@ -2,10 +2,17 @@
 
 use crate::render::mesh::scene::Assets;
 use crate::render::mesh::shaders::ShaderFlags;
+use crate::render::mesh::texture::Texture;
 use crate::render::mesh::ImportData;
 use crate::render::mesh::PbrShaderInterface;
+use bitflags::_core::fmt::Formatter;
+use luminance::pixel::NormRGB8UI;
 use luminance::shader::program::ProgramInterface;
+use luminance::texture::{Dim2, GenMipmaps, MagFilter, MinFilter, Sampler, Wrap};
 use luminance_glfw::GlfwSurface;
+use std::fmt;
+use std::path::Path;
+use thiserror::Error;
 
 /// For now values, but will be changed to textures later. Cheers.
 
@@ -48,14 +55,6 @@ impl Default for Material {
         }
     }
 }
-
-use crate::render::mesh::texture::Texture;
-use bitflags::_core::fmt::{Error, Formatter};
-use luminance::pixel::NormRGB8UI;
-use luminance::texture::{Dim2, GenMipmaps, MagFilter, MinFilter, Sampler, Wrap};
-use std::fmt;
-use std::path::Path;
-use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum TextureError {

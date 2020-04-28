@@ -1,26 +1,20 @@
 //! A scene is made of nodes, which are made of meshes..
 //! Nodes have their own transform but they can also have children nodes.
 
-use super::shaders::ShaderFlags;
 use crate::ecs::Transform;
 use crate::render::lighting::{AmbientLight, DirectionalLight};
 use crate::render::mesh::material::Material;
 use crate::render::mesh::mesh::Mesh;
 use crate::render::mesh::shaders::PbrShaders;
-use crate::render::mesh::texture::Texture;
+use crate::render::mesh::ImportData;
 use crate::render::mesh::PbrShaderInterface;
-use crate::render::mesh::{ImportData, ShaderInterface};
 use crate::render::Render;
-use hecs::World;
 use luminance::context::GraphicsContext;
-use luminance::pipeline::{Pipeline, ShadingGate, TessGate};
-use luminance::pixel::{NormRGB8UI, NormRGBA8UI};
+use luminance::pipeline::{Pipeline, ShadingGate};
 use luminance::render_state::RenderState;
 use luminance::shader::program::ProgramInterface;
-use luminance::texture::{Dim2, GenMipmaps, MagFilter, MinFilter, Sampler, Wrap};
 use luminance_glfw::GlfwSurface;
 use std::collections::HashMap;
-use std::path::Path;
 
 pub type MeshId = String;
 pub type MaterialId = Option<usize>; // None is the default material.
@@ -51,78 +45,33 @@ impl Default for Assets {
 }
 
 impl Scene {
-    pub fn add_fake_material(&mut self, surface: &mut GlfwSurface) {
-        //        let texture_img = read_image(
-        //            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/rustediron2_normal.png",
-        //        )
-        //        .unwrap();
-        //        let texture = load_from_disk(surface, texture_img);
-        //        let normal_map = Texture { texture };
-        //
-        //        let texture_img = read_image(
-        //            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/roughness_metallic_map.png",
-        //        )
-        //        .unwrap();
-        //        let roughness_texture = load_from_disk(surface, texture_img);
-        //        let roughness_map = Texture {
-        //            texture: roughness_texture,
-        //        };
-        //        let flags = ShaderFlags::HAS_NORMAL_TEXTURE
-        //            | ShaderFlags::HAS_ROUGHNESS_METALLIC_MAP
-        //            | ShaderFlags::HAS_METALLIC_MAP
-        //            | ShaderFlags::HAS_COLOR_TEXTURE;
-        //
-        //        let texture_img = read_image(
-        //            std::env::var("ASSET_PATH").unwrap() + "rustediron1-alt2-bl/rustediron2_basecolor.png",
-        //        )
-        //        .unwrap();
-        //        let basecolor_texture = load_from_disk(surface, texture_img);
-        //        let base_color_map = Texture {
-        //            texture: basecolor_texture,
-        //        };
-        //
-        //        let material = Material {
-        //            base_color: [1.0, 1.0, 1.0, 1.0],
-        //            albedo_texture: Some(base_color_map),
-        //            color_texture_coord_set: Some(0),
-        //            normal_scale: Some(1.0),
-        //            normal_texture_coord_set: Some(0),
-        //            normal_texture: Some(normal_map),
-        //            roughness_metallic_texture_coord_set: Some(0),
-        //            roughness_metallic_texture: Some(roughness_map),
-        //            metallic_roughness_values: [0.0, 1.0],
-        //            ao: 1.0,
-        //            alpha_cutoff: 0.0,
-        //            alpha_mode: gltf::material::AlphaMode::Opaque,
-        //            shader_flags: flags,
-        //        };
-        //
-        //        let material = Material::from_textures(
-        //            surface,
-        //            [1.0, 1.0, 1.0, 1.0],
-        //            Some((
-        //                std::env::var("ASSET_PATH").unwrap()
-        //                    + "industrial-tile1-bl/industrial-tile1-albedo.png",
-        //                0,
-        //            )),
-        //            Some((
-        //                std::env::var("ASSET_PATH").unwrap()
-        //                    + "industrial-tile1-bl/industrial-tile1-normal-ogl.png",
-        //                0,
-        //                1.0,
-        //            )),
-        //            Some((
-        //                std::env::var("ASSET_PATH").unwrap()
-        //                    + "industrial-tile1-bl/roughness_metallic_map.png",
-        //                0,
-        //            )),
-        //            [0.0, 1.0],
-        //        )
-        //        .unwrap();
-        //
-        //        self.assets.shaders.add_shader(material.shader_flags);
-        //        self.assets.materials.insert(None, material);
-    }
+    //    pub fn add_fake_material(&mut self, surface: &mut GlfwSurface) {
+    //        //        let material = Material::from_textures(
+    //        //            surface,
+    //        //            [1.0, 1.0, 1.0, 1.0],
+    //        //            Some((
+    //        //                std::env::var("ASSET_PATH").unwrap()
+    //        //                    + "industrial-tile1-bl/industrial-tile1-albedo.png",
+    //        //                0,
+    //        //            )),
+    //        //            Some((
+    //        //                std::env::var("ASSET_PATH").unwrap()
+    //        //                    + "industrial-tile1-bl/industrial-tile1-normal-ogl.png",
+    //        //                0,
+    //        //                1.0,
+    //        //            )),
+    //        //            Some((
+    //        //                std::env::var("ASSET_PATH").unwrap()
+    //        //                    + "industrial-tile1-bl/roughness_metallic_map.png",
+    //        //                0,
+    //        //            )),
+    //        //            [0.0, 1.0],
+    //        //        )
+    //        //        .unwrap();
+    //        //
+    //        //        self.assets.shaders.add_shader(material.shader_flags);
+    //        //        self.assets.materials.insert(None, material);
+    //    }
 
     pub fn from_gltf(surface: &mut GlfwSurface, scene: &gltf::Scene, data: &ImportData) -> Self {
         let mut assets = Assets::default();
@@ -130,8 +79,7 @@ impl Scene {
             .nodes()
             .map(|node| Node::from_gltf(surface, &node, data, &mut assets))
             .collect();
-        let mut scene = Self { nodes, assets };
-        scene
+        Self { nodes, assets }
     }
 
     pub fn render<S>(
@@ -287,10 +235,7 @@ impl Scene {
     }
 }
 
-pub struct Node {
-    transform: Transform,
-    mesh_id: Option<MeshId>,
-}
+pub struct Node {}
 
 impl Node {
     pub fn from_gltf(
@@ -299,7 +244,7 @@ impl Node {
         data: &ImportData,
         assets: &mut Assets,
     ) -> Self {
-        let mesh_id = node.mesh().map(|mesh| {
+        node.mesh().map(|mesh| {
             let mesh_id = mesh
                 .name()
                 .map(|n| n.to_string())
@@ -309,56 +254,18 @@ impl Node {
                 let mesh = Mesh::from_gltf(surface, mesh, data, assets);
                 assets.meshes.insert(mesh_id.clone(), mesh);
             }
-
-            mesh_id
         });
+        //
+        //        let (translation, rotation, scale) = node.transform().decomposed();
+        //        let rotation: glam::Quat = rotation.into();
+        //
+        //        // TODO maybe create components in the ECS instead...
+        //        let transform = Transform {
+        //            translation: translation.into(),
+        //            rotation,
+        //            scale: scale.into(),
+        //        };
 
-        let (translation, rotation, scale) = node.transform().decomposed();
-        let rotation: glam::Quat = rotation.into();
-
-        // TODO maybe create components in the ECS instead...
-        let transform = Transform {
-            translation: translation.into(),
-            rotation,
-            scale: scale.into(),
-        };
-
-        Self { transform, mesh_id }
+        Self {}
     }
-}
-
-// read the texture into memory as a whole bloc (i.e. no streaming)
-fn read_image<P: AsRef<Path>>(path: P) -> Option<image::RgbImage> {
-    image::open(path).map(|img| img.flipv().to_rgb()).ok()
-}
-
-fn load_from_disk(
-    surface: &mut GlfwSurface,
-    img: image::RgbImage,
-) -> luminance::texture::Texture<Dim2, NormRGB8UI> {
-    let (width, height) = img.dimensions();
-    let texels = img.into_raw();
-
-    /**
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    **/
-    // create the luminance texture; the third argument is the number of mipmaps we want (leave it
-    // to 0 for now) and the latest is the sampler to use when sampling the texels in the
-    // shader (we’ll just use the default one)
-    let mut sampler = Sampler::default();
-    sampler.mag_filter = MagFilter::Linear;
-    sampler.min_filter = MinFilter::LinearMipmapLinear;
-    sampler.wrap_t = Wrap::Repeat;
-    sampler.wrap_s = Wrap::Repeat;
-
-    let tex = luminance::texture::Texture::new(surface, [width, height], 0, Sampler::default())
-        .expect("luminance texture creation");
-
-    // the first argument disables mipmap generation (we don’t care so far)
-    tex.upload_raw(GenMipmaps::No, &texels).unwrap();
-
-    tex
 }

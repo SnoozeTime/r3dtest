@@ -18,7 +18,6 @@ use crate::event::GameEvent;
 use crate::gameplay::{
     gun::{Gun, GunInventory},
     health::Health,
-    pickup::PickUp,
     player::{MainPlayer, Player},
 };
 use crate::render::debug::DebugRender;

@@ -1,6 +1,5 @@
 use super::sprite;
 use crate::render::lighting::{AmbientLightProgram, DirectionalLightProgram, PointLightProgram};
-use crate::render::mesh::deferred::{PbrLightingProgram, PbrOffscreenProgram, PbrToScreenProgram};
 use crate::render::particle::ParticleShaderInterface;
 use crate::render::skybox::SkyboxProgram;
 use crate::render::{billboard, debug, text, VertexSementics};
@@ -55,7 +54,6 @@ pub struct AxisShaderInterface {
 
 pub struct Shaders {
     pub regular_program: Program<VertexSementics, (), AxisShaderInterface>,
-    pub scene_program: super::mesh::DeferredSceneProgram,
     pub sprite_program: Program<sprite::VertexSementics, (), sprite::ShaderInterface>,
     pub text_program: Program<text::VertexSemantics, (), text::ShaderInterface>,
     pub billboard_program: Program<(), (), billboard::ShaderInterface>,
@@ -66,11 +64,6 @@ pub struct Shaders {
     pub directional_program: DirectionalLightProgram,
     pub point_light_program: PointLightProgram,
     pub skybox_program: SkyboxProgram,
-
-    // deferred with PBR :)
-    pub pbr_offscreen_program: PbrOffscreenProgram,
-    pub pbr_light_offscreen_program: PbrLightingProgram,
-    pub pbr_light_program: PbrToScreenProgram,
 
     rx: Receiver<Result<notify::Event, notify::Error>>,
     _watcher: RecommendedWatcher,
@@ -85,10 +78,6 @@ impl Shaders {
         let regular_program: Program<VertexSementics, (), AxisShaderInterface> = load_program(
             get_program_path("shaders/deferred_vs.glsl"),
             get_program_path("shaders/deferred_fs.glsl"),
-        );
-        let scene_program = load_program(
-            get_program_path("shaders/pbr/pbr_vs.glsl"),
-            get_program_path("shaders/pbr/pbr_fs.glsl"),
         );
         let sprite_program = load_program(
             get_program_path("shaders/sprite_2_vs.glsl"),
@@ -133,18 +122,6 @@ impl Shaders {
             get_program_path("shaders/skybox_fs.glsl"),
         );
 
-        let pbr_offscreen_program = load_program(
-            get_program_path("shaders/pbr/pbr_deferred_vs.glsl"),
-            get_program_path("shaders/pbr/pbr_deferred_fs.glsl"),
-        );
-        let pbr_light_offscreen_program = load_program(
-            get_program_path("shaders/copy-vs.glsl"),
-            get_program_path("shaders/pbr/light_contribution_fs.glsl"),
-        );
-        let pbr_light_program = load_program(
-            get_program_path("shaders/copy-vs.glsl"),
-            get_program_path("shaders/pbr/total_light_fs.glsl"),
-        );
         let (tx, rx) = std::sync::mpsc::channel();
 
         // Add a path to be watched. All files and directories at that path and
@@ -162,7 +139,6 @@ impl Shaders {
         Self {
             regular_program,
             sprite_program,
-            scene_program,
             text_program,
             billboard_program,
             copy_program,
@@ -172,9 +148,6 @@ impl Shaders {
             directional_program,
             point_light_program,
             skybox_program,
-            pbr_offscreen_program,
-            pbr_light_offscreen_program,
-            pbr_light_program,
             rx,
             _watcher: watcher,
         }
@@ -196,11 +169,6 @@ impl Shaders {
             self.regular_program = load_program(
                 get_program_path("shaders/deferred_vs.glsl"),
                 get_program_path("shaders/deferred_fs.glsl"),
-            );
-
-            self.scene_program = load_program(
-                get_program_path("shaders/scene_vs.glsl"),
-                get_program_path("shaders/scene_fs.glsl"),
             );
 
             self.sprite_program = load_program(

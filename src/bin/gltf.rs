@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use r3dtest::render::mesh::scene::Scene;
 
 use luminance_glfw::{GlfwSurface, WindowDim, WindowOpt};

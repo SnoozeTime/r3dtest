@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use log::{error, info};
 use luminance_glfw::{Action, GlfwSurface, Key, MouseButton, Surface, WindowEvent};
 use std::collections::HashSet;
@@ -63,19 +64,16 @@ impl Input {
                         let y = y as f32;
                         info!("Mouse pos before = {:?}", self.mouse_pos);
                         if let Some((old_x, old_y)) = self.mouse_pos {
-                            let mut delta_x = (x - old_x);
+                            let mut delta_x = x - old_x;
                             if delta_x.abs() > 40.0 {
                                 delta_x = delta_x.signum() * 40.0;
                             }
-                            let mut delta_y = (old_y - y);
+                            let mut delta_y = old_y - y;
 
                             if delta_y.abs() > 40.0 {
                                 delta_y = delta_y.signum() * 40.0;
                             }
-                            self.mouse_delta = Some((delta_x, delta_y
-//                                (x - old_x) / (x - old_x).abs(),
-//                                (old_y - y) / (old_y - y).abs(),
-                            ));
+                            self.mouse_delta = Some((delta_x, delta_y));
                         }
 
                         self.mouse_pos = Some((x, y));
@@ -146,19 +144,16 @@ impl Input {
                         let y = y as f32;
                         info!("Mouse pos before = {:?}", self.mouse_pos);
                         if let Some((old_x, old_y)) = self.mouse_pos {
-                            let mut delta_x = (x - old_x);
+                            let mut delta_x = x - old_x;
                             if delta_x.abs() > 40.0 {
                                 delta_x = delta_x.signum() * 40.0;
                             }
-                            let mut delta_y = (old_y - y);
+                            let mut delta_y = old_y - y;
 
                             if delta_y.abs() > 40.0 {
                                 delta_y = delta_y.signum() * 40.0;
                             }
-                            self.mouse_delta = Some((delta_x, delta_y
-//                                (x - old_x) / (x - old_x).abs(),
-//                                (old_y - y) / (old_y - y).abs(),
-                            ));
+                            self.mouse_delta = Some((delta_x, delta_y));
                         }
 
                         self.mouse_pos = Some((x, y));

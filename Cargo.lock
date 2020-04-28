@@ -1430,7 +1430,7 @@ dependencies = [
 [[package]]
 name = "imgui_luminance"
 version = "0.1.0"
-source = "git+https://github.com/SnoozeTime/imgui_luminance#89523520fbb8b656a39e517667c2077cb80d4fa1"
+source = "git+https://github.com/SnoozeTime/imgui_luminance#b9aff22d589a38659787e4fe4bb306076ba5bffd"
 dependencies = [
  "imgui",
  "luminance",

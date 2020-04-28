@@ -44,7 +44,7 @@ impl FpsController {
 
             let contacts = physics.contact_with(h);
             let mut on_ground = false;
-            let mut direction_normal = glam::Vec3::unit_y();
+            let direction_normal = glam::Vec3::unit_y();
             if let Some(contacts) = contacts {
                 for contact in contacts.iter() {
                     vel += -vel.dot(contact.0) * contact.0.normalize();
@@ -61,7 +61,7 @@ impl FpsController {
             if lateral != 0.0 || forward != 0.0 {
                 // first ray should be at player position + ray * offset.
                 // second ray should be at first pos + ray.left
-                let ray_dir = (lateral * lateral_dir + forward * forward_dir);
+                let ray_dir = lateral * lateral_dir + forward * forward_dir;
                 let vel_along_direction = ray_dir.dot(vel);
                 debug!("Velocity along direction = {:?}", vel_along_direction);
                 let ray_left = ray_dir.cross(glam::Vec3::unit_y());

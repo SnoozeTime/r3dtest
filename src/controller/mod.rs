@@ -206,8 +206,6 @@ impl Controller {
                 //physics.set_friction(h, 10.0);
                 fps.jumping = false;
             }
-            let mut vel = physics.get_linear_velocity(h).unwrap();
-            debug!("VELOCITY IS {:?}", vel);
             if !fps.moving && on_ground {
                 let mut vel = physics.get_linear_velocity(h).unwrap();
                 vel.set_y(0.0);

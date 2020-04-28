@@ -1,69 +1,6 @@
 [
     (
-        transform: Some((
-            translation: (10, 2, -3),
-            scale: (2, 0.1, 5),
-            rotation: (0.47942555, 0, 0, 0.87758255),
-        )),
-        render: Some((
-            mesh: "cube",
-            enabled: true,
-        )),
-        rigid_body: Some((
-            mass: 10,
-            shape: AABB((2, 0.1, 5)),
-            ty: Static,
-            max_linear_velocity: 20,
-            max_angular_velocity: 20,
-            linear_damping: 0,
-        )),
-        color: Some((
-            r: 0,
-            g: 80,
-            b: 121,
-        )),
-        health: Some((
-            current: 4,
-            max: 4,
-        )),
-        emissive: Some((
-            color: (
-                r: 0,
-                g: 80,
-                b: 121,
-            ),
-        )),
-    ),
-(
-        transform: Some((
-            translation: (0, 1.1, 0),
-            scale: (1, 1, 1),
-            rotation: (0, 0, 0, 1),
-        )),
-        point_light: Some((
-            color: (
-                r: 255,
-                g: 255,
-                b: 255,
-            ),
-        )),
-    ),
-
-    (
-        transform: Some((
-            translation: (5, 0.1, -7),
-            scale: (1, 1, 1),
-            rotation: (0, 0, 0, 1),
-        )),
-        point_light: Some((
-            color: (
-                r: 255,
-                g: 255,
-                b: 255,
-            ),
-        )),
-    ),
-    (
+        name: Some(("shotgun_pickup")),
         transform: Some((
             translation: (5, 0.5, -4),
             scale: (0.5, 1, 0.5),
@@ -89,6 +26,7 @@
         pickup: Some(Gun(Shotgun)),
     ),
     (
+        name: Some(("shotgun_ammo_pickup")),
         transform: Some((
             translation: (5, 0.5, -8),
             scale: (0.5, 1, 0.5),
@@ -113,230 +51,44 @@
         )),
         pickup: Some(Ammo(Shotgun)),
     ),
+
+
     (
-            transform: Some((
-                translation: (0, 0, 0),
-                scale: (3, 1, 3),
-                rotation: (0, 0, 0, 1),
-            )),
-            render: Some((
-                mesh: "arena",
-                enabled: true,
-            )),
-            rigid_body: Some((
-                mass: 100,
-                shape: AABB((30, 1, 30)),
-                ty: Static,
-                max_linear_velocity: 0,
-                max_angular_velocity: 0,
-                linear_damping: 0,
-            )),
-            color: Some((
-                r: 110,
-                g: 87,
-                b: 115,
-            )),
-        ),
-        // wall X+ for the arena
-        (
-
-            transform: Some((
-                translation: (30, 0, 0),
-                scale: (2, 1, 30),
-                rotation: (0, 0, 0, 1),
-            )),
-            rigid_body: Some((
-                mass: 100,
-                shape: AABB((2, 10, 30)),
-                ty: Static,
-                max_linear_velocity: 0,
-                max_angular_velocity: 0,
-                linear_damping: 0,
-            )),
-            color: Some((
-                r: 110,
-                g: 87,
-                b: 115,
-            )),
-        ),
-        // wall X- for the arena
-        (
-
-            transform: Some((
-                translation: (-30, 0, 0),
-                scale: (2, 1, 30),
-                rotation: (0, 0, 0, 1),
-            )),
-            rigid_body: Some((
-                mass: 100,
-                shape: AABB((2, 10, 30)),
-                ty: Static,
-                max_linear_velocity: 0,
-                max_angular_velocity: 0,
-                linear_damping: 0,
-            )),
-            color: Some((
-                r: 110,
-                g: 87,
-                b: 115,
-            )),
-        ),
-        // wall Z+ for the arena
-        (
-
-            transform: Some((
-                translation: (0, 0, 30),
-                scale: (30, 1, 2),
-                rotation: (0, 0, 0, 1),
-            )),
-            rigid_body: Some((
-                mass: 100,
-                shape: AABB((30, 10, 2)),
-                ty: Static,
-                max_linear_velocity: 0,
-                max_angular_velocity: 0,
-                linear_damping: 0,
-            )),
-            color: Some((
-                r: 110,
-                g: 87,
-                b: 115,
-            )),
-        ),
-        // wall Z- for the arena
-        (
-
-            transform: Some((
-                translation: (0, 0, -30),
-                scale: (30, 1, 2),
-                rotation: (0, 0, 0, 1),
-            )),
-            rigid_body: Some((
-                mass: 100,
-                shape: AABB((30, 10, 2)),
-                ty: Static,
-                max_linear_velocity: 0,
-                max_angular_velocity: 0,
-                linear_damping: 0,
-            )),
-            color: Some((
-                r: 110,
-                g: 87,
-                b: 115,
-            )),
-        ),
-    (
+        name: Some(("ground")),
         transform: Some((
-            translation: (0, 2, 0),
-            scale: (1, 1, 1),
+            translation: (0, 0, 0),
+            scale: (10, 1, 10),
             rotation: (0, 0, 0, 1),
         )),
         render: Some((
-            mesh: "axis",
-            enabled: true,
-        )),
-        color: Some((
-            r: 255,
-            g: 0,
-            b: 0,
-        )),
-    ),
-    (
-        transform: Some((
-            translation: (0, 2, 0),
-            scale: (1, 1, 1),
-            rotation: (0, 0, 0.70698476, 0.70722884),
-        )),
-        render: Some((
-            mesh: "axis",
-            enabled: true,
-        )),
-        color: Some((
-            r: 0,
-            g: 255,
-            b: 0,
-        )),
-    ),
-    (
-        transform: Some((
-            translation: (0, 2, 0),
-            scale: (1, 1, 1),
-            rotation: (0, -0.7069848, 0, 0.7072287),
-        )),
-        render: Some((
-            mesh: "axis",
-            enabled: true,
-        )),
-        color: Some((
-            r: 0,
-            g: 0,
-            b: 255,
-        )),
-    ),
-    (
-        transform: Some((
-            translation: (0, 1, -10),
-            scale: (15, 3, 1),
-            rotation: (0, 0, 0, 1),
-        )),
-        render: Some((
-            mesh: "cube",
+            mesh: "Cube",
             enabled: true,
         )),
         rigid_body: Some((
-            mass: 1,
-            shape: AABB((15, 3, 1)),
+            mass: 100,
+            shape: AABB((30, 1, 30)),
             ty: Static,
             max_linear_velocity: 0,
             max_angular_velocity: 0,
             linear_damping: 0,
         )),
-        color: Some((
-            r: 234,
-            g: 144,
-            b: 133,
-        )),
     ),
     (
+        name: Some(("funny ball")),
         transform: Some((
-            translation: (0, 1, 4),
-            scale: (0.53, 1, 1),
+            translation: (1, 4, 0),
+            scale: (1, 1, 1),
             rotation: (0, 0, 0, 1),
         )),
-        animation: Some((
-            animations: {
-                "walk_backward": (
-                    keyframes: [
-                        (0, 10),
-                        (1, 10),
-                        (2, 10),
-                        (3, 10),
-                    ],
-                    single: false,
-                    current_index: 0,
-                    elapsed_frame: 0,
-                ),
-                "walk_forward": (
-                    keyframes: [
-                        (4, 10),
-                        (5, 10),
-                        (6, 10),
-                        (7, 10),
-                    ],
-                    single: false,
-                    current_index: 0,
-                    elapsed_frame: 0,
-                ),
-            },
-            current_animation: Some("walk_forward"),
-        )),
-        billboard: Some((
-            texture: "soldier",
+        render: Some((
+            mesh: "Sphere",
             enabled: true,
-            sprite_nb: 0,
         )),
+
     ),
+
     (
+        name: Some(("particle_system")),
         particle: Some((
             position: (1, 1, 1),
             velocity: (0, 2, 0),
@@ -350,18 +102,21 @@
         )),
     ),
     (
+        name: Some(("ambient_light")),
         ambient_light: Some((
             color: (
                 r: 255,
                 g: 255,
                 b: 255,
             ),
-            intensity: 0.8,
+            intensity: 0.2,
         )),
     ),
+
     (
+        name: Some(("directional_light")),
         directional_light: Some((
-            direction: (1, 2, 5),
+            direction: (1, -1, 1),
             color: (
                 r: 255,
                 g: 255,
