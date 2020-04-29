@@ -99,7 +99,11 @@ impl Scene {
         for (_, (t, r)) in world.query::<(&Transform, &Render)>().iter() {
             if let Some(mesh) = self.assets.meshes.get(&r.mesh) {
                 for primitive in mesh.primitives.iter() {
-                    let material = self.assets.materials.get(&None).unwrap();
+                    let material = self
+                        .assets
+                        .materials
+                        .get(&primitive.material)
+                        .unwrap_or(self.assets.materials.get(&None).unwrap());
                     //let material = self.assets.materials.get(&primitive.material).unwrap();
                     let shader = self
                         .assets

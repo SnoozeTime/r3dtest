@@ -102,7 +102,7 @@ pub struct CopyShaderInterface {
 }
 
 const FOVY: f32 = std::f32::consts::PI / 2.;
-const Z_NEAR: f32 = 0.1;
+const Z_NEAR: f32 = 0.01;
 const Z_FAR: f32 = 100.;
 
 /// Offscreen buffer for deferred rendering:

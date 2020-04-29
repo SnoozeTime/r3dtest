@@ -15,7 +15,7 @@ pub mod client;
 pub mod fps;
 pub mod free;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Fps {
     pub speed: f32,
     pub air_speed: f32,
@@ -111,24 +111,19 @@ fn apply_cmd(
             }
         }
         ClientCommand::Shoot => {
-            let camera = world.get::<Camera>(e).unwrap();
+            // let camera = world.get::<Camera>(e).unwrap();
             let rb = world.get::<RigidBody>(e).unwrap();
             let t = world.get::<Transform>(e).unwrap();
+            let directions = crate::utils::quat_to_direction(t.rotation);
             if let Ok(mut gun) = world.get_mut::<Gun>(e) {
                 if gun.can_shoot() {
                     gun.shoot();
                     let h = rb.handle.unwrap();
-                    trace!("CAMERA IS {:?}", *camera);
-                    trace!(
-                        "Will raycast from {:?} direction {:?}",
-                        physics.get_pos(h),
-                        camera.front
-                    );
 
-                    let mut d = physics.raycast(h, t.translation, camera.front);
+                    let mut d = physics.raycast(h, t.translation, directions.0);
                     trace!("{:?}", d);
                     d.sort_by(|(toi, _), (toi_o, _)| toi.partial_cmp(toi_o).unwrap());
-                    if let Some(ev) = create_shot_event(d, resources, camera.front) {
+                    if let Some(ev) = create_shot_event(d, resources, directions.0) {
                         let mut event_channel =
                             resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
                         event_channel.single_write(ev);

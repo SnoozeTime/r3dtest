@@ -55,7 +55,7 @@ impl LocalTransformEditor {
         {
             let mut translation = transform.translation.into();
             if ui
-                .input_float3(&im_str!("translation"), &mut translation)
+                .input_float3(&im_str!("local translation"), &mut translation)
                 .build()
             {
                 transform.translation = translation.into();
@@ -63,14 +63,17 @@ impl LocalTransformEditor {
             }
 
             let mut scale = transform.scale.into();
-            if ui.input_float3(&im_str!("scale"), &mut scale).build() {
+            if ui.input_float3(&im_str!("local scale"), &mut scale).build() {
                 transform.scale = scale.into();
                 transform.dirty = true;
             }
 
             // need to convert back and forth to euler angles for the rotation.
             let mut angles = quat_to_euler(transform.rotation).into();
-            if ui.input_float3(&im_str!("rotation"), &mut angles).build() {
+            if ui
+                .input_float3(&im_str!("local rotation"), &mut angles)
+                .build()
+            {
                 transform.dirty = true;
                 transform.rotation = glam::Quat::from_rotation_ypr(angles[0], angles[1], angles[2]);
             }

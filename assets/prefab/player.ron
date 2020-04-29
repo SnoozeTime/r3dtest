@@ -61,5 +61,26 @@
                 rotation: (0, 0, 0, 1),
             )),
         ),
+
+        // the gun model
+        (
+            name: Some(("Gun")),
+            // will be overwritten
+            transform: Some((
+                translation: (0, 15, -5),
+                scale: (1, 1, 1),
+                rotation: (0, 0, 0, 1),
+            )),
+            // same position as player.
+            local_transform: Some((
+                translation: (0.2, 0, 0),
+                scale: (0.2, 0.2, 0.2),
+                rotation: (0, 0, 0, 1),
+            )),
+            render: Some((
+                mesh: "Cube.001",
+                enabled: true
+            )),
+        )
     ]
 )

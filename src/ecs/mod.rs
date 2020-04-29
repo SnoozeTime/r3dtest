@@ -27,8 +27,12 @@ pub struct Transform {
     pub rotation: Quat,
 
     /// When set to true, the children of this transform will need to update their global Transform.
-    #[serde(skip)]
+    #[serde(default = "default_dirty")]
     pub dirty: bool,
+}
+
+fn default_dirty() -> bool {
+    true
 }
 
 impl Transform {

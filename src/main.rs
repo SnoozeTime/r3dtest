@@ -7,8 +7,9 @@ use imgui::{Context, FontConfig, FontGlyphRanges, FontSource};
 use log::{debug, error, info};
 use luminance_windowing::CursorMode;
 use r3dtest::animation::AnimationSystem;
+use r3dtest::camera::Camera;
 use r3dtest::controller::free::FreeController;
-use r3dtest::controller::{client, Controller};
+use r3dtest::controller::{client, Controller, Fps};
 use r3dtest::ecs::WorldLoader;
 use r3dtest::event::Event;
 use r3dtest::gameplay::delete::GarbageCollector;
@@ -23,6 +24,7 @@ use r3dtest::physics::{BodyToEntity, PhysicWorld};
 use r3dtest::render::assets::AssetManager;
 use r3dtest::render::debug::update_debug_components;
 use r3dtest::render::{RenderConfig, Renderer};
+use r3dtest::transform::HasChildren;
 use r3dtest::{
     ecs::Transform, event::GameEvent, input::Input, physics::RigidBody, resources::Resources,
 };
@@ -168,6 +170,25 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
     let size = surface.size();
     let mut editor = r3dtest::editor::Editor::new(size[0], size[1]);
 
+    let free_camera = world.spawn((
+        Transform::new(
+            glam::vec3(0.0, 0.0, 0.0),
+            glam::Quat::identity(),
+            glam::Vec3::one(),
+        ),
+        Camera {
+            active: false,
+            pitch: 0.0,
+            yaw: 0.0,
+            front: glam::Vec3::zero(),
+            left: glam::Vec3::zero(),
+        },
+        Fps {
+            sensitivity: 0.004,
+            ..Fps::default()
+        },
+    ));
+
     'app: loop {
         {
             let mut input = resources.fetch_mut::<Input>().unwrap();
@@ -197,14 +218,15 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
                     &mut controller_mode,
                     &mut previous_controller_mode,
                     player_entity,
+                    free_camera,
                     &world,
                     &mut physics,
                 );
             }
 
-            if input.has_key_event_happened(Key::F3, Action::Press) {
-                renderer.next_blending_mod_lighting();
-            }
+            //            if input.has_key_event_happened(Key::F3, Action::Press) {
+            //                renderer.next_blending_mod_lighting();
+            //            }
         }
 
         match controller_mode {
@@ -220,7 +242,9 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
 
                 controller.update(&mut world, &mut physics, &resources);
             }
-            ControllerMode::Free => free_controller.process_input(&mut world, &mut resources),
+            ControllerMode::Free => {
+                free_controller.process_input(&mut world, &mut resources, free_camera)
+            }
             _ => (),
         }
 
@@ -307,6 +331,7 @@ fn toggle_controller(
     current_controller_mode: &mut ControllerMode,
     previous_controller_mode: &mut ControllerMode,
     player_entity: hecs::Entity,
+    free_camera: hecs::Entity,
     world: &hecs::World,
     physics: &mut PhysicWorld,
 ) {
@@ -315,12 +340,34 @@ fn toggle_controller(
         ControllerMode::Player => {
             let rb = world.get::<RigidBody>(player_entity).unwrap();
             physics.remove_body(rb.handle.unwrap());
+
+            let mut free_cam_c = world.get_mut::<Camera>(free_camera).unwrap();
+            free_cam_c.active = true;
+            let children = world.get::<HasChildren>(player_entity).unwrap();
+            for c in &children.children {
+                if let Ok(mut player_camera) = world.get_mut::<Camera>(*c) {
+                    player_camera.active = false;
+                    break;
+                }
+            }
             ControllerMode::Free
         }
         ControllerMode::Free => {
             let mut rb = world.get_mut::<RigidBody>(player_entity).unwrap();
             let t = world.get::<Transform>(player_entity).unwrap();
             physics.add_body(&t, &mut rb);
+
+            let mut free_cam_c = world.get_mut::<Camera>(free_camera).unwrap();
+            let children = world.get::<HasChildren>(player_entity).unwrap();
+
+            for c in &children.children {
+                if let Ok(mut player_camera) = world.get_mut::<Camera>(*c) {
+                    player_camera.active = true;
+                    break;
+                }
+            }
+            free_cam_c.active = false;
+
             ControllerMode::Player
         }
         _ => *current_controller_mode,

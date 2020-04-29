@@ -9,57 +9,60 @@ use luminance_glfw::Key;
 pub struct FreeController;
 
 impl FreeController {
-    pub fn process_input(&self, world: &mut hecs::World, resources: &mut Resources) {
-        if let Some((_, (transform, _, fps))) = world
-            .query::<(&mut Transform, &MainPlayer, &Fps)>()
-            .iter()
-            .next()
-        {
-            let input = resources.fetch::<Input>().unwrap();
-            let (front, up, left) = crate::utils::quat_to_direction(transform.rotation);
+    pub fn process_input(
+        &self,
+        world: &mut hecs::World,
+        resources: &mut Resources,
+        e: hecs::Entity,
+    ) {
+        let mut transform = world.get_mut::<Transform>(e).unwrap();
+        let fps = world.get::<Fps>(e).unwrap();
+        let input = resources.fetch::<Input>().unwrap();
+        let (front, up, left) = crate::utils::quat_to_direction(transform.rotation);
 
-            // TODO maybe remove that later.
-            let lateral_dir = {
-                if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
-                    Some(left)
-                } else if input.key_down.contains(&Key::Right) || input.key_down.contains(&Key::D) {
-                    Some(-left)
-                } else {
-                    None
-                }
-            };
-            let forward_dir = {
-                if input.key_down.contains(&Key::Up) || input.key_down.contains(&Key::W) {
-                    Some(front)
-                } else if input.key_down.contains(&Key::Down) || input.key_down.contains(&Key::S) {
-                    Some(-front)
-                } else {
-                    None
-                }
-            };
-
-            let direction = match (forward_dir, lateral_dir) {
-                (Some(fd), Some(ld)) => Some((fd + ld).normalize()),
-                (Some(fd), None) => Some(fd),
-                (None, Some(ld)) => Some(ld),
-                _ => None,
-            };
-
-            if let Some(direction) = direction {
-                transform.translation += direction * 1.0;
-                transform.dirty = true;
+        // TODO maybe remove that later.
+        let lateral_dir = {
+            if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
+                Some(left)
+            } else if input.key_down.contains(&Key::Right) || input.key_down.contains(&Key::D) {
+                Some(-left)
+            } else {
+                None
             }
-
-            // orientation of camera.
-            if let Some((offset_x, offset_y)) = input.mouse_delta {
-                apply_delta_dir(offset_x, offset_y, transform, fps.sensitivity, left);
+        };
+        let forward_dir = {
+            if input.key_down.contains(&Key::Up) || input.key_down.contains(&Key::W) {
+                Some(front)
+            } else if input.key_down.contains(&Key::Down) || input.key_down.contains(&Key::S) {
+                Some(-front)
+            } else {
+                None
             }
+        };
 
-            if input.has_key_down(Key::Space) {
-                transform.translation.set_y(transform.translation.y() + 1.0);
-                transform.dirty = true;
-            }
+        let direction = match (forward_dir, lateral_dir) {
+            (Some(fd), Some(ld)) => Some((fd + ld).normalize()),
+            (Some(fd), None) => Some(fd),
+            (None, Some(ld)) => Some(ld),
+            _ => None,
+        };
+
+        if let Some(direction) = direction {
+            transform.translation += direction * 0.5;
+            transform.dirty = true;
         }
+
+        // orientation of camera.
+        if let Some((offset_x, offset_y)) = input.mouse_delta {
+            apply_delta_dir(offset_x, offset_y, &mut transform, fps.sensitivity, left);
+        }
+
+        if input.has_key_down(Key::Space) {
+            let translation = transform.translation.y();
+            transform.translation.set_y(translation + 0.5);
+            transform.dirty = true;
+        }
+        //}
     }
 }
 fn apply_delta_dir(

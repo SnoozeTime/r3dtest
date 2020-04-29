@@ -15,10 +15,13 @@ pub struct LocalTransform {
     pub scale: Vec3,
     pub rotation: Quat,
 
-    #[serde(default)]
+    #[serde(default = "default_dirty")]
     pub dirty: bool,
 }
 
+fn default_dirty() -> bool {
+    true
+}
 impl LocalTransform {
     pub fn new(translation: Vec3, rotation: Quat, scale: Vec3) -> Self {
         Self {
