@@ -84,7 +84,25 @@
             mesh: "Sphere",
             enabled: true,
         )),
-
+        children: [
+            (
+                name: Some(("funny ball 2")),
+                transform: Some((
+                    translation: (1, 4, 0),
+                    scale: (1, 1, 1),
+                    rotation: (0, 0, 0, 1),
+                )),
+                local_transform: Some((
+                    translation: (1, 0, 0),
+                    scale: (0.2, 0.2, 0.2),
+                    rotation: (0, 0, 0, 1),
+                )),
+                render: Some((
+                    mesh: "Sphere",
+                    enabled: true,
+                ))
+            ),
+        ]
     ),
 
     (

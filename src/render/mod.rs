@@ -209,8 +209,18 @@ impl Renderer {
     pub fn update_view_matrix(&mut self, world: &World) {
         for (_, (t, c)) in world.query::<(&Transform, &Camera)>().iter() {
             if c.active {
-                self.view = c.get_view(t.translation);
-                info!("Update view matrix = {:?}", self.view);
+                let [x, y, z, w]: [f32; 4] = t.rotation.into();
+                let front = glam::vec3(
+                    2.0 * (x * z + w * y),
+                    2.0 * (y * z - w * x),
+                    1.0 - 2.0 * (x * x + y * y),
+                );
+                self.view = glam::Mat4::look_at_rh(
+                    t.translation,
+                    t.translation + front,
+                    glam::Vec3::unit_y(),
+                );
+                //self.view = c.get_view(t.translation);
             }
         }
     }

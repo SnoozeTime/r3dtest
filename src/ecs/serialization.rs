@@ -16,6 +16,7 @@ use crate::render::{
     sprite::{ScreenPosition, SpriteRender},
     Render,
 };
+use crate::transform::{HasChildren, HasParent, LocalTransform};
 use hecs::World;
 use serde_derive::{Deserialize, Serialize};
 use thiserror::Error;
@@ -39,15 +40,15 @@ where
 macro_rules! serialize {
     ($(($name:ident, $component:ty)),+) => {
 
-
         #[derive(Debug, Clone, Serialize, Deserialize, Default)]
         pub struct SerializedEntity {
             $(
                 #[serde(skip_serializing_if = "Option::is_none")]
                 #[serde(default)]
-                pub $name: Option<$component>
-            ),+
-
+                pub $name: Option<$component>,
+            )+
+            #[serde(default)]
+            pub children: Vec<SerializedEntity>,
         }
 
         pub fn deserialize_world(world_str: String) -> Result<hecs::World, SerializationError> {
@@ -60,59 +61,82 @@ macro_rules! serialize {
         }
 
         pub fn add_to_world(world: &mut World, serialized_entities: Vec<SerializedEntity>) -> Vec<hecs::Entity> {
-
-            let mut builder = hecs::EntityBuilder::new();
             let mut entities = vec![];
-            for e in serialized_entities {
-
-                $(
-                    if let Some(c) = e.$name {
-                        builder.add(c);
-                    }
-                )+
-
-                entities.push(world.spawn(builder.build()));
+            for serialized in serialized_entities {
+                entities.push(deserialize_entity(world, serialized));
             }
             entities
         }
 
         pub fn spawn_entity(world: &mut World, serialized: &SerializedEntity) -> hecs::Entity {
+            deserialize_entity(world, serialized.clone())
+        }
+
+        pub fn serialize_entities(world: &hecs::World) -> Vec<SerializedEntity> {
+            let entities: Vec<_> = world.iter()
+                .filter(|(e, _)| {
+                    world.get::<HasChildren>(*e).is_ok()
+                }).filter_map(|(e, _)| {
+                    serialize_entity(e, world)
+                }).collect();
+
+            entities
+        }
+
+        pub fn deserialize_entity(world: &mut hecs::World, serialized: SerializedEntity, ) -> hecs::Entity {
             let mut builder = hecs::EntityBuilder::new();
             $(
                 if let Some(ref c) = serialized.$name {
                   builder.add(c.clone());
-                    }
+                }
             )+
 
-            world.spawn(builder.build())
+            let parent_entity = world.spawn(builder.build());
+
+            // now the children.
+            let mut children = vec![];
+            for c in serialized.children {
+                let child_entity = deserialize_entity(world, c);
+                world.insert_one(child_entity, HasParent { entity: parent_entity });
+                children.push(child_entity);
+            }
+
+            if !children.is_empty() {
+                world.insert_one(parent_entity, HasChildren { children });
+            }
+
+            parent_entity
         }
 
-        pub fn serialize_entities(world: &hecs::World) -> Vec<SerializedEntity> {
-            let entities: Vec<_> = world
-                .iter()
-                .filter_map(|(e, _)| {
-                    // Now, add the components to serialize...
-                    let mut one_not_none = false;
-                    $(
-                        let $name = get_component::<$component>(world, e);
-                        if $name.is_some() {
-                            one_not_none = true;
-                        }
-                    )+
+        pub fn serialize_entity(e: hecs::Entity, world: &hecs::World) -> Option<SerializedEntity> {
+            let mut one_not_none = false;
+            $(
+                let $name = get_component::<$component>(world, e);
+                if $name.is_some() {
+                    one_not_none = true;
+                }
+            )+
 
-                    if one_not_none {
-                        Some(SerializedEntity {
-                            $(
-                                $name
-                            ),+
-                        })
-                    } else {
-                        None
+            let mut children: Vec<SerializedEntity> = vec![];
+
+            if let Ok(children_component) = world.get::<HasChildren>(e) {
+                for c in &children_component.children {
+                    if let Some(serialized_entity) = serialize_entity(e, world) {
+                        children.push(serialized_entity);
                     }
-                })
-                .collect();
+                }
+            }
 
-            entities
+            if one_not_none || !children.is_empty() {
+                Some(SerializedEntity {
+                    $(
+                        $name,
+                    )+
+                    children,
+                })
+            } else {
+                None
+            }
         }
 
         pub fn serialize_world(world: &hecs::World) -> Result<String, SerializationError> {
@@ -126,6 +150,7 @@ macro_rules! serialize {
 
 serialize! {
     (transform, Transform),
+    (local_transform, LocalTransform),
     (render, Render),
     (rigid_body, RigidBody),
     (color, RgbColor),

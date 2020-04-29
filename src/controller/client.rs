@@ -1,10 +1,12 @@
 use super::Fps;
 use crate::camera::Camera;
+use crate::ecs::Transform;
 use crate::event::GameEvent;
 use crate::gameplay::gun::{Gun, GunSlot};
 use crate::gameplay::player::{MainPlayer, Player, PlayerState};
 use crate::input::Input;
 use crate::resources::Resources;
+use crate::transform::HasChildren;
 use log::info;
 use luminance_glfw::{Action, Key, MouseButton};
 use serde_derive::{Deserialize, Serialize};
@@ -13,6 +15,7 @@ use shrev::EventChannel;
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum ClientCommand {
     Move(glam::Vec3),
+    CameraMoved,
     LookAt(f32, f32), // pitch and yaw
     Jump,
     Shoot,
@@ -41,44 +44,35 @@ impl ClientController {
     ) -> Vec<ClientCommand> {
         let mut commands = vec![];
 
-        if let Some((e, (fps, camera, _, p))) = world
-            .query::<(&mut Fps, &mut Camera, &MainPlayer, &Player)>()
+        if let Some((e, (t, fps, _, p))) = world
+            .query::<(&mut Transform, &mut Fps, &MainPlayer, &Player)>()
             .iter()
             .next()
         {
+            // player should have the camera as children if there is any camera.
             let input = resources.fetch::<Input>().unwrap();
 
             if let PlayerState::Alive = p.state {
-                if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
-                    commands.push(ClientCommand::Lateral(1.0));
-                } else if input.key_down.contains(&Key::Right) || input.key_down.contains(&Key::D) {
-                    commands.push(ClientCommand::Lateral(-1.0));
-                }
-                if input.key_down.contains(&Key::Up) || input.key_down.contains(&Key::W) {
-                    commands.push(ClientCommand::Forward(-1.0));
-                } else if input.key_down.contains(&Key::Down) || input.key_down.contains(&Key::S) {
-                    commands.push(ClientCommand::Forward(1.0));
-                }
-
+                let (front, up, left) = crate::utils::quat_to_direction(t.rotation);
                 // TODO maybe remove that later.
                 let lateral_dir = {
                     if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
-                        Some(camera.left)
+                        Some(left)
                     } else if input.key_down.contains(&Key::Right)
                         || input.key_down.contains(&Key::D)
                     {
-                        Some(-camera.left)
+                        Some(-left)
                     } else {
                         None
                     }
                 };
                 let forward_dir = {
                     if input.key_down.contains(&Key::Up) || input.key_down.contains(&Key::W) {
-                        Some(camera.left.cross(glam::Vec3::unit_y()))
+                        Some(left.cross(glam::Vec3::unit_y()))
                     } else if input.key_down.contains(&Key::Down)
                         || input.key_down.contains(&Key::S)
                     {
-                        Some(-camera.left.cross(glam::Vec3::unit_y()))
+                        Some(-left.cross(glam::Vec3::unit_y()))
                     } else {
                         None
                     }
@@ -98,8 +92,8 @@ impl ClientController {
                 // orientation of camera.
                 if let Some((offset_x, offset_y)) = input.mouse_delta {
                     info!("Apply mouse delta {} {}", offset_x, offset_y);
-                    apply_delta_dir(offset_x, offset_y, camera, fps.sensitivity);
-                    commands.push(ClientCommand::LookAt(camera.pitch, camera.yaw));
+                    apply_delta_dir(offset_x, offset_y, t, fps.sensitivity, left);
+                    commands.push(ClientCommand::CameraMoved);
                 }
 
                 if input.has_key_down(Key::Space) {
@@ -148,18 +142,15 @@ impl ClientController {
     }
 }
 
-fn apply_delta_dir(offset_x: f32, offset_y: f32, camera: &mut Camera, sensitivity: f32) {
-    camera.yaw += offset_x * sensitivity;
-    camera.pitch += offset_y * sensitivity;
-    if camera.pitch >= 89.0 {
-        camera.pitch = 89.0;
-    }
-    if camera.pitch <= -89.0 {
-        camera.pitch = -89.0;
-    }
-
-    info!("new yaw is {}", camera.yaw);
-    info!("new pitch is {}", camera.pitch);
-
-    camera.compute_vectors();
+fn apply_delta_dir(
+    offset_x: f32,
+    offset_y: f32,
+    t: &mut Transform,
+    sensitivity: f32,
+    left: glam::Vec3,
+) {
+    let rot_up = glam::Quat::from_rotation_y(-offset_x * sensitivity);
+    let rot_left = glam::Quat::from_axis_angle(left, -offset_y * sensitivity);
+    t.rotation = rot_up * rot_left * t.rotation;
+    t.dirty = true;
 }

@@ -25,9 +25,22 @@ pub struct Transform {
     pub translation: Vec3,
     pub scale: Vec3,
     pub rotation: Quat,
+
+    /// When set to true, the children of this transform will need to update their global Transform.
+    #[serde(skip)]
+    pub dirty: bool,
 }
 
 impl Transform {
+    pub fn new(translation: Vec3, rotation: Quat, scale: Vec3) -> Self {
+        Self {
+            translation,
+            scale,
+            rotation,
+            dirty: true,
+        }
+    }
+
     pub fn to_model(&self) -> glam::Mat4 {
         glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
     }
@@ -58,6 +71,12 @@ impl Transform {
             isometry.rotation.k,
             isometry.rotation.w,
         );
+        self.dirty = true;
+    }
+
+    pub fn set_rotation(&mut self, q: glam::Quat) {
+        self.rotation = q;
+        self.dirty = true;
     }
 }
 
@@ -67,6 +86,7 @@ impl Default for Transform {
             translation: Vec3::zero(),
             scale: Vec3::zero(),
             rotation: Quat::identity(),
+            dirty: false,
         }
     }
 }

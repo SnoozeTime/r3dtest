@@ -171,7 +171,6 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
     'app: loop {
         {
             let mut input = resources.fetch_mut::<Input>().unwrap();
-
             if let ControllerMode::Editor = controller_mode {
                 input.process_events_with_editor(&mut surface, imgui.io_mut(), &imgui_renderer);
             } else {
@@ -215,8 +214,10 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
                     .drain(..)
                     .map(|ev| (player_entity, Event::Client(ev)))
                     .collect();
+
                 //fps_controller.apply_commands(&cmds);
                 controller.apply_inputs(cmds, &mut world, &mut physics, &resources);
+
                 controller.update(&mut world, &mut physics, &resources);
             }
             ControllerMode::Free => free_controller.process_input(&mut world, &mut resources),
@@ -228,18 +229,27 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         // ----------------------------------------------------
         // PHYSIC SIMULATION
         // ----------------------------------------------------
-
         physics.step();
 
         // Update the positions.
-        for (_, (mut t, rb)) in world.query::<(&mut Transform, &RigidBody)>().iter() {
+        for (e, (mut t, rb)) in world.query::<(&mut Transform, &RigidBody)>().iter() {
             if let Some(h) = rb.handle {
                 if let Some(new_iso) = physics.get_isometry(h) {
+                    if t.translation != new_iso.translation || t.rotation != new_iso.rotation {
+                        t.dirty = true;
+                    }
                     t.translation = new_iso.translation;
-                    t.rotation = new_iso.rotation;
+
+                    // hummm FIXME
+                    if world.get::<MainPlayer>(e).is_err() {
+                        t.rotation = new_iso.rotation;
+                    }
                 }
             }
         }
+        // update child components.
+        r3dtest::transform::update_transforms(&mut world);
+
         renderer.update(&mut world, dt, &mut resources);
 
         // Update health if somebody has been SHOT.

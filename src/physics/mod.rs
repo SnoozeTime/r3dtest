@@ -4,8 +4,10 @@ use log::{debug, info, trace};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 extern crate nalgebra as na;
-use self::na::Isometry3;
+use self::na::Unit;
 use crate::ecs::Transform;
+use nalgebra::{Isometry3, UnitQuaternion};
+
 use na::Point3;
 use na::Vector3;
 use ncollide3d::pipeline::CollisionGroups;
@@ -261,6 +263,14 @@ impl PhysicWorld {
         }
     }
 
+    pub fn set_rotation(&mut self, h: BodyIndex, t: Transform) {
+        if let Some(rb) = self.bodies.rigid_body_mut(h.0) {
+            let mut pos = rb.position().clone();
+            let isometry = t.to_isometry();
+            pos.rotation = isometry.rotation;
+            rb.set_position(pos);
+        }
+    }
     pub fn get_linear_velocity(&mut self, h: BodyIndex) -> Option<glam::Vec3> {
         if let Some(rb) = self.bodies.rigid_body_mut(h.0) {
             let v = rb.velocity().linear;

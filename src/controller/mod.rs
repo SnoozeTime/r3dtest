@@ -78,14 +78,19 @@ fn apply_cmd(
     resources: &Resources,
 ) {
     match cmd {
-        ClientCommand::LookAt(pitch, yaw) => {
-            let mut camera = world.get_mut::<Camera>(e).unwrap();
-            let mut lookat = world.get_mut::<LookAt>(e).unwrap();
-            camera.pitch = pitch;
-            camera.yaw = yaw;
-            camera.compute_vectors();
-            lookat.0 = camera.front;
-        }
+        //        ClientCommand::LookAt(pitch, yaw) => {
+        //            let mut camera = world.get_mut::<Camera>(e).unwrap();
+        //            let mut lookat = world.get_mut::<LookAt>(e).unwrap();
+        //            camera.pitch = pitch;
+        //            camera.yaw = yaw;
+        //            camera.compute_vectors();
+        //            lookat.0 = camera.front;
+        //        }
+        //        ClientCommand::CameraMoved => {
+        //            let rb = world.get::<RigidBody>(e).unwrap();
+        //            let t = world.get::<Transform>(e).unwrap();
+        //            physics.set_rotation(rb.handle.unwrap(), *t);
+        //        }
         ClientCommand::Move(dir) => {
             let rb = world.get::<RigidBody>(e).unwrap();
             let mut fps = world.get_mut::<Fps>(e).unwrap();

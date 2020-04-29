@@ -1,21 +1,13 @@
 (
-
     transform: Some((
         translation: (0, 15, -5),
-        scale: (0.53, 1, 1),
+        scale: (1, 1, 1),
         rotation: (0, 0, 0, 1),
     )),
     name: Some(("player")),
     player: Some((
         nb: 0,
         state: Respawn(1.0),
-    )),
-    camera: Some((
-        active: true,
-        pitch: 0,
-        yaw: 0,
-        front: (1, 0, 0),
-        left: (0, 0, -1),
     )),
     rigid_body: Some((
         mass: 1,
@@ -45,4 +37,29 @@
                 ),
             }
     )),
+    children: [
+        // Player has the main camera directly as a child
+        (
+            name: Some(("Camera")),
+            camera: Some((
+                active: true,
+                pitch: 0,
+                yaw: 0,
+                front: (1, 0, 0),
+                left: (0, 0, -1),
+            )),
+            // will be overwritten
+            transform: Some((
+                translation: (0, 15, -5),
+                scale: (1, 1, 1),
+                rotation: (0, 0, 0, 1),
+            )),
+            // same position as player.
+            local_transform: Some((
+                translation: (0, 0, 0),
+                scale: (1, 1, 1),
+                rotation: (0, 0, 0, 1),
+            )),
+        ),
+    ]
 )

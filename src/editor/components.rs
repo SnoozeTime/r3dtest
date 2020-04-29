@@ -3,6 +3,8 @@
 use crate::ecs::{Name, Transform};
 use crate::physics::{RigidBody, Shape};
 use crate::render::lighting::{AmbientLight, DirectionalLight};
+use crate::render::Render;
+use crate::transform::LocalTransform;
 use glam::Quat;
 use imgui::{im_str, CollapsingHeader, ColorEdit, Ui};
 use nalgebra::UnitQuaternion;
@@ -23,16 +25,53 @@ impl TransformEditor {
                 .build()
             {
                 transform.translation = translation.into();
+                transform.dirty = true;
             }
 
             let mut scale = transform.scale.into();
             if ui.input_float3(&im_str!("scale"), &mut scale).build() {
                 transform.scale = scale.into();
+                transform.dirty = true;
             }
 
             // need to convert back and forth to euler angles for the rotation.
             let mut angles = quat_to_euler(transform.rotation).into();
             if ui.input_float3(&im_str!("rotation"), &mut angles).build() {
+                transform.dirty = true;
+                transform.rotation = glam::Quat::from_rotation_ypr(angles[0], angles[1], angles[2]);
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct LocalTransformEditor;
+
+impl LocalTransformEditor {
+    pub fn edit(&self, ui: &Ui, transform: &mut LocalTransform) {
+        if CollapsingHeader::new(ui, im_str!("Local Transform"))
+            .default_open(true)
+            .build()
+        {
+            let mut translation = transform.translation.into();
+            if ui
+                .input_float3(&im_str!("translation"), &mut translation)
+                .build()
+            {
+                transform.translation = translation.into();
+                transform.dirty = true;
+            }
+
+            let mut scale = transform.scale.into();
+            if ui.input_float3(&im_str!("scale"), &mut scale).build() {
+                transform.scale = scale.into();
+                transform.dirty = true;
+            }
+
+            // need to convert back and forth to euler angles for the rotation.
+            let mut angles = quat_to_euler(transform.rotation).into();
+            if ui.input_float3(&im_str!("rotation"), &mut angles).build() {
+                transform.dirty = true;
                 transform.rotation = glam::Quat::from_rotation_ypr(angles[0], angles[1], angles[2]);
             }
         }
@@ -133,6 +172,25 @@ impl DirectionalLightEditor {
                 .build()
             {
                 light.direction = direction.into();
+            }
+        }
+    }
+}
+
+// Edit render component
+#[derive(Default)]
+pub struct RenderEditor;
+
+impl RenderEditor {
+    pub fn edit(&self, ui: &Ui, render: &mut Render) {
+        if CollapsingHeader::new(ui, im_str!("Render"))
+            .default_open(true)
+            .build()
+        {
+            let mut imstring = imgui::ImString::from(render.mesh.clone());
+
+            if ui.input_text(im_str!("Mesh"), &mut imstring).build() {
+                render.mesh = imstring.to_string();
             }
         }
     }

@@ -6,9 +6,9 @@
 //! Also has the `spawn_player` function that will spawn an entity for the player (should be
 //! replaced by some configuration file at some point...)
 use crate::camera::{Camera, LookAt};
-use crate::ecs::serialization;
 use crate::ecs::serialization::SerializedEntity;
 use crate::ecs::Transform;
+use crate::ecs::{serialization, Name};
 use crate::physics::{BodyToEntity, PhysicWorld, RigidBody};
 use crate::resources::Resources;
 use hecs::{Entity, World};
@@ -22,6 +22,8 @@ use crate::gameplay::gun::GunInventory;
 use crate::gameplay::health::Health;
 use crate::net::snapshot::Deltable;
 use crate::render::billboard::Billboard;
+use crate::render::Render;
+use crate::transform::{HasChildren, HasParent, LocalTransform};
 use serde_derive::{Deserialize, Serialize};
 use shrev::{EventChannel, ReaderId};
 use std::time::Duration;
@@ -96,68 +98,18 @@ pub fn spawn_player(
     physics: &mut PhysicWorld,
     resources: &Resources,
 ) -> Entity {
-    //    let transform = Transform {
-    //        translation: glam::vec3(0.0, 15.0, -5.0),
-    //        scale: glam::vec3(0.53, 1., 1.),
-    //        rotation: glam::Quat::identity(),
-    //    };
-    //
-    //    // player is a 2d sprite.
-    //    let billboard = Billboard {
-    //        sprite_nb: 0,
-    //        enabled: false,
-    //        texture: "soldier".to_string(),
-    //    };
-    //    let mut animations = HashMap::new();
-    //    animations.insert(
-    //        "walk_forward".to_string(),
-    //        Animation::new(vec![(4, 10), (5, 10), (6, 10), (7, 10)]),
-    //    );
-    //    animations.insert(
-    //        "walk_backward".to_string(),
-    //        Animation::new(vec![(0, 10), (1, 10), (2, 10), (3, 10)]),
-    //    );
-    //    let animation = AnimationController {
-    //        animations,
-    //        current_animation: Some("walk_forward".to_string()),
-    //    };
-    //
-    //    let cam = Camera::new(0., 0.);
-    //    let look_at = LookAt(cam.front);
-    //    let mut rb = RigidBody {
-    //        handle: None,
-    //        mass: 1.,
-    //        shape: AABB(glam::vec3(0.5, 1.1, 0.5)),
-    //        ty: BodyType::Dynamic,
-    //    };
-    //    let idx = physics.add_body(transform.translation, &mut rb);
-    //    let fps = Fps {
-    //        on_ground: false,
-    //        jumping: true,
-    //        sensitivity: 0.005,
-    //        speed: 1.5,
-    //    };
-    // physics.set_friction(idx, 0.3);
-
     let mut body_to_entity = resources.fetch_mut::<BodyToEntity>().unwrap();
 
-    //    let player_health = Health {
-    //        max: 10.0,
-    //        current: 10.0,
-    //    };
-
-    //
     let player_prefab = std::env::var("ASSET_PATH").unwrap() + "prefab/player.ron";
 
-    println!("Prefab file = {:?}", player_prefab);
     let player_prefab = fs::read_to_string(player_prefab).unwrap();
     let ser_entity: SerializedEntity = ron::de::from_str(&player_prefab).unwrap();
     let e = crate::ecs::serialization::spawn_entity(world, &ser_entity);
 
-    let lookat = {
-        let cam = world.get::<Camera>(e).unwrap();
-        LookAt(cam.front)
-    };
+    //    let lookat = {
+    //        let cam = world.get::<Camera>(e).unwrap();
+    //        LookAt(cam.front)
+    //    };
     let idx = {
         let mut rb = world.get_mut::<RigidBody>(e).unwrap();
         let transform = world.get::<Transform>(e).unwrap();
@@ -171,6 +123,30 @@ pub fn spawn_player(
             .get_first()
             .expect("Inventory should have at least one gun")
     };
+
+    // Let's have a weird cube that;s always in front of the player.
+    //    let cube_entity = world.spawn((
+    //        Transform::default(),
+    //        LocalTransform::new(
+    //            glam::vec3(1.0, 0.0, 0.0),
+    //            glam::Quat::identity(),
+    //            glam::vec3(0.5, 0.5, 0.5),
+    //        ),
+    //        Render {
+    //            mesh: "Cube.001".to_owned(),
+    //            enabled: true,
+    //        },
+    //        Name("gun".to_string()),
+    //        HasParent { entity: e },
+    //    ));
+    //
+    //    if let Some()
+    //    world.insert_one(
+    //        e,
+    //        HasChildren {
+    //            children: vec![cube_entity],
+    //        },
+    //    );
     //
     //    let e = world.spawn((
     //        transform,
@@ -189,7 +165,7 @@ pub fn spawn_player(
 
     body_to_entity.insert(idx, e);
 
-    world.insert(e, (lookat, current_gun)).unwrap();
+    world.insert_one(e, current_gun).unwrap();
 
     e
 }

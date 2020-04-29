@@ -10,28 +10,29 @@ pub struct FreeController;
 
 impl FreeController {
     pub fn process_input(&self, world: &mut hecs::World, resources: &mut Resources) {
-        if let Some((_, (transform, camera, _, fps))) = world
-            .query::<(&mut Transform, &mut Camera, &MainPlayer, &Fps)>()
+        if let Some((_, (transform, _, fps))) = world
+            .query::<(&mut Transform, &MainPlayer, &Fps)>()
             .iter()
             .next()
         {
             let input = resources.fetch::<Input>().unwrap();
+            let (front, up, left) = crate::utils::quat_to_direction(transform.rotation);
 
             // TODO maybe remove that later.
             let lateral_dir = {
                 if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {
-                    Some(camera.left)
+                    Some(left)
                 } else if input.key_down.contains(&Key::Right) || input.key_down.contains(&Key::D) {
-                    Some(-camera.left)
+                    Some(-left)
                 } else {
                     None
                 }
             };
             let forward_dir = {
                 if input.key_down.contains(&Key::Up) || input.key_down.contains(&Key::W) {
-                    Some(camera.front)
+                    Some(front)
                 } else if input.key_down.contains(&Key::Down) || input.key_down.contains(&Key::S) {
-                    Some(-camera.front)
+                    Some(-front)
                 } else {
                     None
                 }
@@ -46,29 +47,30 @@ impl FreeController {
 
             if let Some(direction) = direction {
                 transform.translation += direction * 1.0;
+                transform.dirty = true;
             }
 
             // orientation of camera.
             if let Some((offset_x, offset_y)) = input.mouse_delta {
-                apply_delta_dir(offset_x, offset_y, camera, fps.sensitivity);
+                apply_delta_dir(offset_x, offset_y, transform, fps.sensitivity, left);
             }
 
             if input.has_key_down(Key::Space) {
                 transform.translation.set_y(transform.translation.y() + 1.0);
+                transform.dirty = true;
             }
         }
     }
 }
-
-fn apply_delta_dir(offset_x: f32, offset_y: f32, camera: &mut Camera, sensitivity: f32) {
-    camera.yaw += offset_x * sensitivity;
-    camera.pitch += offset_y * sensitivity;
-    if camera.pitch >= 89.0 {
-        camera.pitch = 89.0;
-    }
-    if camera.pitch <= -89.0 {
-        camera.pitch = -89.0;
-    }
-
-    camera.compute_vectors();
+fn apply_delta_dir(
+    offset_x: f32,
+    offset_y: f32,
+    t: &mut Transform,
+    sensitivity: f32,
+    left: glam::Vec3,
+) {
+    let rot_up = glam::Quat::from_rotation_y(-offset_x * sensitivity);
+    let rot_left = glam::Quat::from_axis_angle(left, -offset_y * sensitivity);
+    t.rotation = rot_up * rot_left * t.rotation;
+    t.dirty = true;
 }

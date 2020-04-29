@@ -3,11 +3,14 @@ use imgui::{im_str, Selectable};
 
 mod components;
 use crate::editor::components::{
-    AmbientLightEditor, DirectionalLightEditor, NameEditor, RigidBodyEditor, TransformEditor,
+    AmbientLightEditor, DirectionalLightEditor, LocalTransformEditor, NameEditor, RenderEditor,
+    RigidBodyEditor, TransformEditor,
 };
 use crate::physics::{BodyToEntity, PhysicWorld, RigidBody};
 use crate::render::lighting::{AmbientLight, DirectionalLight};
+use crate::render::Render;
 use crate::resources::Resources;
+use crate::transform::LocalTransform;
 
 /// Keep the state of the game editor.
 pub struct Editor {
@@ -77,6 +80,10 @@ impl Editor {
                         self.transform_editor.edit(ui, &mut t);
                     }
 
+                    if let Ok(mut t) = world.get_mut::<LocalTransform>(entity) {
+                        LocalTransformEditor::default().edit(ui, &mut t);
+                    }
+
                     if let Ok(mut n) = world.get_mut::<Name>(entity) {
                         self.name_editor.edit(ui, &mut n);
                     }
@@ -102,6 +109,10 @@ impl Editor {
 
                     if let Ok(mut light) = world.get_mut::<DirectionalLight>(entity) {
                         DirectionalLightEditor::default().edit(ui, &mut light);
+                    }
+
+                    if let Ok(mut render) = world.get_mut::<Render>(entity) {
+                        RenderEditor::default().edit(ui, &mut render);
                     }
                 })
         }

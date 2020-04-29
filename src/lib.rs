@@ -16,6 +16,8 @@ pub mod physics;
 pub mod render;
 pub mod resources;
 pub mod scene;
+pub mod transform;
+pub mod utils;
 
 #[macro_export]
 macro_rules! timed {
