@@ -1,5 +1,5 @@
 use crate::ecs::{Name, Transform};
-use imgui::{im_str, Selectable};
+use imgui::{im_str, Selectable, TreeNode};
 
 mod components;
 use crate::editor::components::{
@@ -10,7 +10,7 @@ use crate::physics::{BodyToEntity, PhysicWorld, RigidBody};
 use crate::render::lighting::{AmbientLight, DirectionalLight};
 use crate::render::Render;
 use crate::resources::Resources;
-use crate::transform::LocalTransform;
+use crate::transform::{HasChildren, HasParent, LocalTransform};
 
 /// Keep the state of the game editor.
 pub struct Editor {
@@ -37,6 +37,47 @@ impl Editor {
             rigidbody_editor: RigidBodyEditor::default(),
         }
     }
+
+    fn build_tree(
+        &mut self,
+        world: &hecs::World,
+        parent: hecs::Entity,
+        children: Vec<hecs::Entity>,
+        ui: &imgui::Ui,
+    ) {
+        let entity_name = if let Ok(name) = world.get::<Name>(parent) {
+            im_str!("{}", name.0)
+        } else {
+            im_str!("Entity {}", parent.to_bits())
+        };
+
+        let selected = self
+            .selected_entity
+            .map(|current| current == parent)
+            .unwrap_or(false);
+
+        TreeNode::new(ui, &entity_name)
+            .leaf(children.is_empty())
+            .selected(selected)
+            .opened(true, imgui::Condition::FirstUseEver)
+            .open_on_double_click(true)
+            .open_on_arrow(true)
+            .build(|| {
+                if ui.is_item_clicked(imgui::MouseButton::Left) {
+                    self.selected_entity = Some(parent);
+                }
+                for c in children {
+                    let gc = if let Ok(gc) = world.get::<HasChildren>(c) {
+                        gc.children.clone()
+                    } else {
+                        vec![]
+                    };
+
+                    self.build_tree(world, c, gc, ui);
+                }
+            });
+    }
+
     pub fn show_components(
         &mut self,
         ui: &imgui::Ui,
@@ -47,24 +88,29 @@ impl Editor {
         imgui::Window::new(im_str!("Entities"))
             .opened(&mut true)
             .position([10.0, 10.0], imgui::Condition::FirstUseEver)
+            .size([200.0, 500.0], imgui::Condition::FirstUseEver)
             .build(ui, || {
-                for (e, _) in world.iter() {
-                    let selected = self
-                        .selected_entity
-                        .map(|current| current == e)
-                        .unwrap_or(false);
+                let parent_nodes: Vec<(hecs::Entity, Vec<hecs::Entity>)> = world
+                    .iter()
+                    .filter(|(e, _)| {
+                        let has_parent = world.get::<HasParent>(*e);
+                        has_parent.is_err()
+                    })
+                    .map(|(e, _)| {
+                        let children = if let Ok(cc) = world.get::<HasChildren>(e) {
+                            cc.children.clone()
+                        } else {
+                            vec![]
+                        };
 
-                    let entity_name = if let Ok(name) = world.get::<Name>(e) {
-                        im_str!("{}", name.0)
-                    } else {
-                        im_str!("Entity {}", e.to_bits())
-                    };
-                    if Selectable::new(&entity_name).selected(selected).build(ui) {
-                        self.selected_entity = Some(e);
-                    }
+                        (e, children)
+                    })
+                    .collect();
+
+                for (parent, children) in parent_nodes {
+                    self.build_tree(world, parent, children, ui);
                 }
             });
-
         if let Some(entity) = self.selected_entity {
             imgui::Window::new(im_str!("Components"))
                 .opened(&mut true)

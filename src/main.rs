@@ -335,9 +335,10 @@ fn toggle_controller(
     world: &hecs::World,
     physics: &mut PhysicWorld,
 ) {
-    *previous_controller_mode = *current_controller_mode;
     let new_mode = match current_controller_mode {
         ControllerMode::Player => {
+            *previous_controller_mode = *current_controller_mode;
+
             let rb = world.get::<RigidBody>(player_entity).unwrap();
             physics.remove_body(rb.handle.unwrap());
 
@@ -353,6 +354,8 @@ fn toggle_controller(
             ControllerMode::Free
         }
         ControllerMode::Free => {
+            *previous_controller_mode = *current_controller_mode;
+
             let mut rb = world.get_mut::<RigidBody>(player_entity).unwrap();
             let t = world.get::<Transform>(player_entity).unwrap();
             physics.add_body(&t, &mut rb);
@@ -370,7 +373,7 @@ fn toggle_controller(
 
             ControllerMode::Player
         }
-        _ => *current_controller_mode,
+        _ => return,
     };
     *current_controller_mode = new_mode;
 }
