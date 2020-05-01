@@ -16,8 +16,10 @@ void main()
 {
     v_UV[0] = tex_coord_0;
     v_UV[1] = tex_coord_1;
+    // v_Position = vec3(position.xyz) / position.w;
+
     v_Position = vec3(model * vec4(position, 1.0));
-    v_Normal = mat3(model) * normal;
+    v_Normal = normalize(vec3(model * vec4(normal.xyz, 0.0)));
 
     gl_Position =  projection * view * vec4(v_Position, 1.0);
 }

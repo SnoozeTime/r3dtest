@@ -37,7 +37,7 @@ impl Default for Assets {
         let mut materials = HashMap::new();
         materials.insert(None, Material::default());
         Self {
-            shaders: PbrShaders::default(),
+            shaders: PbrShaders::new(),
             materials,
             meshes: HashMap::new(),
         }
@@ -45,6 +45,9 @@ impl Default for Assets {
 }
 
 impl Scene {
+    pub fn check_updates(&mut self) {
+        self.assets.shaders.update();
+    }
     //    pub fn add_fake_material(&mut self, surface: &mut GlfwSurface) {
     //        //        let material = Material::from_textures(
     //        //            surface,
@@ -203,6 +206,23 @@ impl Scene {
                 iface.u_normal_sampler.update(&normal_tex);
                 iface.u_normal_tex_coord.update(normal_coord);
                 iface.u_normal_scale.update(normal_scale);
+                iface.u_metallic_roughness_sampler.update(&rm_tex);
+                iface.u_metallic_roughness_tex_coord.update(rm_coord);
+            }
+            (
+                Some(color_tex),
+                Some(color_coord),
+                None,
+                None,
+                None,
+                Some(rm_tex),
+                Some(rm_coord),
+            ) => {
+                let color_tex = pipeline.bind_texture(&color_tex.texture);
+                let rm_tex = pipeline.bind_texture(&rm_tex.texture);
+                iface.u_base_color_sampler.update(&color_tex);
+                iface.u_base_color_tex_coord.update(color_coord);
+
                 iface.u_metallic_roughness_sampler.update(&rm_tex);
                 iface.u_metallic_roughness_tex_coord.update(rm_coord);
             }

@@ -269,6 +269,7 @@ impl Renderer {
     ) {
         let assets = resources.fetch::<AssetManager>().unwrap();
         self.shaders.update();
+        self.deferred_pbr_renderer.check_updates();
 
         let color = [0.8, 0.8, 0.8, 1.];
 

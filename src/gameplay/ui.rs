@@ -20,7 +20,7 @@ pub struct UiSystem {
     ammo_entity: hecs::Entity,
     _armor_entity: hecs::Entity,
     _crosshair_entity: hecs::Entity,
-    weapon_entity: Option<hecs::Entity>,
+    //weapon_entity: Option<hecs::Entity>,
     rdr_id: ReaderId<GameEvent>,
 }
 
@@ -36,13 +36,13 @@ impl UiSystem {
         let ammo_entity = spawn_ammo_counter(world);
         let armor_entity = spawn_armor_counter(world);
 
-        let weapon_entity = spawn_weapon(world);
+        //let weapon_entity = spawn_weapon(world);
         let crosshair_entity = spawn_crosshair(world);
         Self {
             health_entity,
             ammo_entity,
             _armor_entity: armor_entity,
-            weapon_entity,
+            //weapon_entity,
             _crosshair_entity: crosshair_entity,
             rdr_id,
         }
@@ -64,11 +64,11 @@ impl UiSystem {
                     }
                 }
                 GameEvent::Shoot => {
-                    if let Some(weapon_entity) = self.weapon_entity {
-                        let mut animation =
-                            world.get_mut::<AnimationController>(weapon_entity).unwrap();
-                        animation.current_animation = Some("shoot".to_string());
-                    }
+                    //                    if let Some(weapon_entity) = self.weapon_entity {
+                    //                        let mut animation =
+                    //                            world.get_mut::<AnimationController>(weapon_entity).unwrap();
+                    //                        animation.current_animation = Some("shoot".to_string());
+                    //                    }
 
                     if self.update_ammo(world) {
                         should_update = true;
@@ -81,10 +81,10 @@ impl UiSystem {
                 }
                 GameEvent::GunChanged => {
                     info!("Gun changed event in UI");
-                    if let Some(e) = self.weapon_entity {
-                        world.despawn(e).unwrap();
-                    }
-                    self.weapon_entity = spawn_weapon(world);
+                    //                    if let Some(e) = self.weapon_entity {
+                    //                        world.despawn(e).unwrap();
+                    //                    }
+                    //                    self.weapon_entity = spawn_weapon(world);
                     if self.update_ammo(world) {
                         should_update = true;
                     }
@@ -100,14 +100,14 @@ impl UiSystem {
 
     fn update_ammo(&self, world: &hecs::World) -> bool {
         let mut should_update = false;
-        if let Some(_) = self.weapon_entity {
-            if let Some((_, (g, _))) = world.query::<(&Gun, &MainPlayer)>().iter().next() {
-                let mut text = world.get_mut::<Text>(self.ammo_entity).unwrap();
-                println!("AMMO IS {}", g.ammo);
-                text.content = format!("{}", g.ammo);
-                should_update = true;
-            }
-        }
+        //        if let Some(_) = self.weapon_entity {
+        //            if let Some((_, (g, _))) = world.query::<(&Gun, &MainPlayer)>().iter().next() {
+        //                let mut text = world.get_mut::<Text>(self.ammo_entity).unwrap();
+        //                println!("AMMO IS {}", g.ammo);
+        //                text.content = format!("{}", g.ammo);
+        //                should_update = true;
+        //            }
+        //        }
         should_update
     }
 }

@@ -53,7 +53,7 @@ impl ClientController {
             let input = resources.fetch::<Input>().unwrap();
 
             if let PlayerState::Alive = p.state {
-                let (front, up, left) = crate::utils::quat_to_direction(t.rotation);
+                let (front, up, left) = crate::geom::quat_to_direction(t.rotation);
                 // TODO maybe remove that later.
                 let lateral_dir = {
                     if input.key_down.contains(&Key::Left) || input.key_down.contains(&Key::A) {

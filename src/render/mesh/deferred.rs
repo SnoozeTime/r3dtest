@@ -53,4 +53,8 @@ impl DeferredRenderer {
                 .render(pipeline, shd_gate, projection, view, world, cam_position);
         }
     }
+
+    pub fn check_updates(&mut self) {
+        self.scene.check_updates();
+    }
 }

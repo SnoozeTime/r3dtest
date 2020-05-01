@@ -10,6 +10,7 @@ pub mod ecs;
 pub mod editor;
 pub mod event;
 pub mod gameplay;
+pub mod geom;
 pub mod input;
 pub mod net;
 pub mod physics;
@@ -17,7 +18,6 @@ pub mod render;
 pub mod resources;
 pub mod scene;
 pub mod transform;
-pub mod utils;
 
 #[macro_export]
 macro_rules! timed {

@@ -1,6 +1,7 @@
 //! Individual UI editor for components
 //!
 use crate::ecs::{Name, Transform};
+use crate::geom;
 use crate::physics::{RigidBody, Shape};
 use crate::render::lighting::{AmbientLight, DirectionalLight};
 use crate::render::Render;
@@ -35,10 +36,12 @@ impl TransformEditor {
             }
 
             // need to convert back and forth to euler angles for the rotation.
-            let mut angles = quat_to_euler(transform.rotation).into();
+            let euler: (f32, f32, f32) = geom::euler_from_quat(transform.rotation);
+            let mut angles = [euler.0, euler.1, euler.2];
             if ui.input_float3(&im_str!("rotation"), &mut angles).build() {
                 transform.dirty = true;
-                transform.rotation = glam::Quat::from_rotation_ypr(angles[0], angles[1], angles[2]);
+                transform.rotation = geom::quat_from_euler(angles[0], angles[1], angles[2]);
+                // transform.rotation = glam::Quat::from_rotation_ypr(angles[0], angles[1], angles[2]);
             }
         }
     }
@@ -69,26 +72,17 @@ impl LocalTransformEditor {
             }
 
             // need to convert back and forth to euler angles for the rotation.
-            let mut angles = quat_to_euler(transform.rotation).into();
+            let euler: (f32, f32, f32) = geom::euler_from_quat(transform.rotation);
+            let mut angles = [euler.0, euler.1, euler.2];
             if ui
                 .input_float3(&im_str!("local rotation"), &mut angles)
                 .build()
             {
                 transform.dirty = true;
-                transform.rotation = glam::Quat::from_rotation_ypr(angles[0], angles[1], angles[2]);
+                transform.rotation = geom::quat_from_euler(angles[0], angles[1], angles[2]);
             }
         }
     }
-}
-
-#[allow(dead_code)]
-fn quat_to_euler(q: Quat) -> glam::Vec3 {
-    let (axis, angle) = q.to_axis_angle();
-    let rot = UnitQuaternion::from_scaled_axis(
-        nalgebra::Vector3::new(axis.x(), axis.y(), axis.z()) * angle,
-    );
-    let (roll, pitch, yaw) = rot.euler_angles();
-    glam::Vec3::new(yaw, pitch, roll)
 }
 
 /// Edit the name of an entity.

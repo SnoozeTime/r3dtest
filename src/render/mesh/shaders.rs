@@ -4,8 +4,10 @@
 
 use crate::render::mesh::PbrShaderInterface;
 use luminance::shader::program::Program;
+use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::fs;
+use std::sync::mpsc::Receiver;
 
 bitflags! {
     /// Attached to material to help choosing the shader to use.
@@ -39,12 +41,34 @@ impl ShaderFlags {
 
 /// Will store all the shaders for the PBR rendering. There can be in total
 /// 2^(ShaderFlags variants) number of shaders.
-#[derive(Default)]
 pub struct PbrShaders {
     pub shaders: HashMap<ShaderFlags, Program<super::VertexSemantics, (), PbrShaderInterface>>,
+
+    rx: Receiver<Result<notify::Event, notify::Error>>,
+    _watcher: RecommendedWatcher,
+}
+
+fn get_program_path(program_name: &str) -> String {
+    format!("{}{}", std::env::var("ASSET_PATH").unwrap(), program_name)
 }
 
 impl PbrShaders {
+    pub fn new() -> Self {
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        let mut watcher: RecommendedWatcher =
+            Watcher::new_immediate(move |res| tx.send(res).unwrap()).unwrap();
+
+        watcher
+            .watch(get_program_path("shaders/pbr"), RecursiveMode::Recursive)
+            .unwrap();
+
+        Self {
+            shaders: HashMap::default(),
+            rx,
+            _watcher: watcher,
+        }
+    }
     /// Will compile the shaders with the given flags and store it. If it already exists, this
     /// is a no-op
     pub fn add_shader(&mut self, flags: ShaderFlags) {
@@ -77,6 +101,29 @@ impl PbrShaders {
         Program::from_strings(None, &vs, None, &final_fs)
             .unwrap()
             .ignore_warnings()
+    }
+    pub fn reload(&mut self) {
+        for (k, v) in &mut self.shaders {
+            let new_shader = PbrShaders::load_with_defines(k.to_defines());
+            *v = new_shader;
+        }
+    }
+
+    pub fn update(&mut self) {
+        let mut should_reload = false;
+        for res in &self.rx.try_recv() {
+            match res {
+                Ok(Event {
+                    kind: EventKind::Modify(..),
+                    ..
+                }) => should_reload = true,
+                _ => (),
+            }
+        }
+
+        if should_reload {
+            self.reload();
+        }
     }
 }
 

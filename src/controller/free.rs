@@ -18,7 +18,7 @@ impl FreeController {
         let mut transform = world.get_mut::<Transform>(e).unwrap();
         let fps = world.get::<Fps>(e).unwrap();
         let input = resources.fetch::<Input>().unwrap();
-        let (front, up, left) = crate::utils::quat_to_direction(transform.rotation);
+        let (front, up, left) = crate::geom::quat_to_direction(transform.rotation);
 
         // TODO maybe remove that later.
         let lateral_dir = {

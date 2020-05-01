@@ -127,7 +127,7 @@ impl Material {
                 (None, None)
             };
 
-        Ok(Self {
+        let mat = Self {
             base_color,
             albedo_texture,
             color_texture_coord_set,
@@ -141,7 +141,10 @@ impl Material {
             alpha_cutoff: 0.0,
             ao: 1.0,
             shader_flags,
-        })
+        };
+
+        println!("MATERIAL -> {:?}", mat);
+        Ok(mat)
     }
 
     /// Create a material from a GLTF document.

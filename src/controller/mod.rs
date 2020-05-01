@@ -114,7 +114,7 @@ fn apply_cmd(
             // let camera = world.get::<Camera>(e).unwrap();
             let rb = world.get::<RigidBody>(e).unwrap();
             let t = world.get::<Transform>(e).unwrap();
-            let directions = crate::utils::quat_to_direction(t.rotation);
+            let directions = crate::geom::quat_to_direction(t.rotation);
             if let Ok(mut gun) = world.get_mut::<Gun>(e) {
                 if gun.can_shoot() {
                     gun.shoot();
