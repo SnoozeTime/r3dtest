@@ -314,7 +314,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         // remove all old entities.
         garbage_collector.collect(&mut world, &mut physics, &resources);
 
-        renderer.check_updates(&mut surface, &world, &resources);
+        renderer.check_updates(&mut surface, &mut world, &resources, Some(&mut editor));
 
         // FIXME
         surface.swap_buffers();

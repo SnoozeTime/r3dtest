@@ -8,13 +8,14 @@ use luminance::texture::Dim2;
 use luminance_derive::{Semantics, UniformInterface, Vertex};
 
 pub mod deferred;
+pub mod import;
 pub mod material;
 pub mod mesh;
 pub mod primitive;
 pub mod scene;
 mod shaders;
 pub mod texture;
-
+pub use shaders::ShaderFlags;
 type ImportData = (
     gltf::Document,
     Vec<gltf::buffer::Data>,

@@ -157,7 +157,7 @@ fn main_loop(mut surface: GlfwSurface) {
         // remove all old entities.
         garbage_collector.collect_without_physics(&mut world, &resources);
 
-        renderer.check_updates(&mut surface, &world, &resources);
+        renderer.check_updates(&mut surface, &mut world, &resources, None);
 
         // FIXME
         let now = Instant::now();

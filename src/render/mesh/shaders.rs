@@ -18,6 +18,12 @@ bitflags! {
     }
 }
 
+impl Default for ShaderFlags {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 impl ShaderFlags {
     /// Will give a list of defines to add at the top of the shaders.
     pub fn to_defines(&self) -> Vec<String> {

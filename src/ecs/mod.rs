@@ -88,9 +88,9 @@ impl Default for Transform {
     fn default() -> Self {
         Self {
             translation: Vec3::zero(),
-            scale: Vec3::zero(),
+            scale: Vec3::one(),
             rotation: Quat::identity(),
-            dirty: false,
+            dirty: true,
         }
     }
 }

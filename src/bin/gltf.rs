@@ -1,8 +1,11 @@
 #![allow(warnings)]
+use r3dtest::ecs::Transform;
 use r3dtest::render::mesh::scene::Scene;
+use r3dtest::render::Render;
 
 use luminance_glfw::{GlfwSurface, WindowDim, WindowOpt};
 use luminance_windowing::Surface;
+use r3dtest::ecs::serialization::SerializedEntity;
 use std::fs;
 use std::fs::File;
 fn main() {
@@ -24,4 +27,28 @@ fn main() {
 
     println!("scene materials = {:?}", scene.assets.materials);
     println!("meshes = {:?}", scene.assets.meshes.keys());
+
+    let serialized: Vec<_> = scene
+        .nodes
+        .iter()
+        .map(|node| {
+            let t = node.transform;
+            let mut ser = SerializedEntity::default();
+            ser.transform = Some(t);
+
+            if let Some(ref m) = node.mesh_id {
+                ser.render = Some(Render {
+                    mesh: m.clone(),
+                    enabled: true,
+                });
+            }
+
+            ser
+        })
+        .collect();
+
+    std::fs::write(
+        "benoit.ron",
+        ron::ser::to_string_pretty(&serialized, ron::ser::PrettyConfig::default()).unwrap(),
+    );
 }

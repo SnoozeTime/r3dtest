@@ -1,5 +1,5 @@
 use crate::ecs::{Name, Transform};
-use imgui::{im_str, Selectable, TreeNode};
+use imgui::{im_str, ImString, MenuItem, Selectable, StyleVar, TreeNode};
 
 mod components;
 use crate::editor::components::{
@@ -24,6 +24,10 @@ pub struct Editor {
     transform_editor: TransformEditor,
     name_editor: NameEditor,
     rigidbody_editor: RigidBodyEditor,
+
+    // Loading GLTF
+    current_gltf_to_load: ImString,
+    pub gltf_to_load: Option<String>,
 }
 
 impl Editor {
@@ -35,6 +39,8 @@ impl Editor {
             transform_editor: TransformEditor::default(),
             name_editor: NameEditor::default(),
             rigidbody_editor: RigidBodyEditor::default(),
+            current_gltf_to_load: ImString::with_capacity(128),
+            gltf_to_load: None,
         }
     }
 
@@ -90,6 +96,11 @@ impl Editor {
             .position([10.0, 10.0], imgui::Condition::FirstUseEver)
             .size([200.0, 500.0], imgui::Condition::FirstUseEver)
             .build(ui, || {
+                if ui.button(im_str!("Import.."), [0.0, 0.0]) {
+                    ui.open_popup(im_str!("Import?"));
+                }
+                self.show_load_gltf_popup(ui);
+
                 let parent_nodes: Vec<(hecs::Entity, Vec<hecs::Entity>)> = world
                     .iter()
                     .filter(|(e, _)| {
@@ -111,6 +122,7 @@ impl Editor {
                     self.build_tree(world, parent, children, ui);
                 }
             });
+
         if let Some(entity) = self.selected_entity {
             imgui::Window::new(im_str!("Components"))
                 .opened(&mut true)
@@ -162,5 +174,28 @@ impl Editor {
                     }
                 })
         }
+    }
+
+    fn show_load_gltf_popup(&mut self, ui: &imgui::Ui) {
+        ui.popup_modal(im_str!("Import?"))
+            .always_auto_resize(true)
+            .build(|| {
+                ui.text("Choose path where ther gltf file is located:\n");
+                ui.separator();
+                let style = ui.push_style_var(StyleVar::FramePadding([0.0, 0.0]));
+                ui.input_text(im_str!("File to load:"), &mut self.current_gltf_to_load)
+                    .build();
+                if ui.button(im_str!("OK"), [120.0, 0.0]) {
+                    self.gltf_to_load = Some(self.current_gltf_to_load.to_string());
+                    self.current_gltf_to_load.clear();
+                    ui.close_current_popup();
+                }
+                ui.same_line(0.0);
+                if ui.button(im_str!("Cancel"), [120.0, 0.0]) {
+                    self.current_gltf_to_load.clear();
+                    ui.close_current_popup();
+                }
+                style.pop(ui);
+            });
     }
 }

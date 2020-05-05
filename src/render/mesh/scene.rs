@@ -259,7 +259,10 @@ impl Scene {
     }
 }
 
-pub struct Node {}
+pub struct Node {
+    pub transform: Transform,
+    pub mesh_id: Option<MeshId>,
+}
 
 impl Node {
     pub fn from_gltf(
@@ -268,7 +271,7 @@ impl Node {
         data: &ImportData,
         assets: &mut Assets,
     ) -> Self {
-        node.mesh().map(|mesh| {
+        let mesh_id = node.mesh().map(|mesh| {
             let mesh_id = mesh
                 .name()
                 .map(|n| n.to_string())
@@ -278,18 +281,20 @@ impl Node {
                 let mesh = Mesh::from_gltf(surface, mesh, data, assets);
                 assets.meshes.insert(mesh_id.clone(), mesh);
             }
+            mesh_id
         });
         //
-        //        let (translation, rotation, scale) = node.transform().decomposed();
-        //        let rotation: glam::Quat = rotation.into();
+        let (translation, rotation, scale) = node.transform().decomposed();
+        let rotation: glam::Quat = rotation.into();
         //
         //        // TODO maybe create components in the ECS instead...
-        //        let transform = Transform {
-        //            translation: translation.into(),
-        //            rotation,
-        //            scale: scale.into(),
-        //        };
+        let transform = Transform {
+            translation: translation.into(),
+            rotation,
+            scale: scale.into(),
+            dirty: true,
+        };
 
-        Self {}
+        Self { transform, mesh_id }
     }
 }

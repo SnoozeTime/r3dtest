@@ -2,6 +2,7 @@
 extern crate bitflags;
 
 pub mod animation;
+pub mod assets;
 pub mod camera;
 pub mod collections;
 pub mod colors;

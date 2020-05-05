@@ -1,0 +1,30 @@
+[package]
+name = "asset_preprocessing"
+version = "0.1.0"
+authors = ["Benoit Eudier <benoit.eudier@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bitflags = "1.2.1"
+image = "0.21.0"
+serde = "1.0.105"
+serde_derive = "1.0.105"
+ron = "0.5.1"
+bincode = "1.2.1"
+thiserror = "1.0.16"
+fehler = "1.0.0"
+r3dtest = { path = ".."}
+log = "0.4.8"
+pretty_env_logger = "0.4.0"
+structopt = { version = "0.3" }
+base64 = "0.11.0"
+
+[dependencies.gltf]
+version = "0.15"
+features = ["extras", "names"]
+
+[dependencies.glam]
+version = "0.8.4"
+features = ["serde"]

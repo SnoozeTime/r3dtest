@@ -1,10 +1,12 @@
 use crate::ecs::Transform;
 use crate::gameplay::player::MainPlayer;
 use crate::render::mesh::scene::Scene;
+use log::error;
 use luminance::blending::{Equation, Factor};
 use luminance::context::GraphicsContext;
 use luminance::pipeline::{Pipeline, ShadingGate};
 use luminance_glfw::GlfwSurface;
+use std::path::Path;
 
 pub struct DeferredRenderer {
     scene: Scene,
@@ -25,6 +27,15 @@ impl DeferredRenderer {
         Self {
             scene,
             current_blending_mode: 0,
+        }
+    }
+
+    pub fn load_gltf<P>(&mut self, surface: &mut GlfwSurface, world: &mut hecs::World, path: P)
+    where
+        P: AsRef<Path>,
+    {
+        if let Err(e) = super::import::import_gltf(surface, &mut self.scene, world, path) {
+            error!("{:?}", e);
         }
     }
 

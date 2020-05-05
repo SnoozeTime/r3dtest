@@ -19,6 +19,7 @@ pub mod text;
 use crate::camera::Camera;
 use crate::colors::RgbColor;
 use crate::ecs::Transform;
+use crate::editor::Editor;
 use crate::event::GameEvent;
 use crate::gameplay::player::{MainPlayer, Player, PlayerState};
 use crate::net::snapshot::Deltable;
@@ -237,8 +238,9 @@ impl Renderer {
     pub fn check_updates(
         &mut self,
         surface: &mut GlfwSurface,
-        world: &World,
+        world: &mut World,
         resources: &Resources,
+        editor: Option<&mut Editor>,
     ) {
         let should_update = {
             let mut update = false;
@@ -253,6 +255,13 @@ impl Renderer {
 
         if should_update {
             self.update_text(surface, world);
+        }
+
+        if let Some(editor) = editor {
+            if let Some(to_load) = editor.gltf_to_load.take() {
+                self.deferred_pbr_renderer
+                    .load_gltf(surface, world, to_load);
+            }
         }
     }
 

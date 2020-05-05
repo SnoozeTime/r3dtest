@@ -19,6 +19,17 @@ pub struct LocalTransform {
     pub dirty: bool,
 }
 
+impl From<Transform> for LocalTransform {
+    fn from(t: Transform) -> Self {
+        Self {
+            translation: t.translation,
+            scale: t.scale,
+            rotation: t.rotation,
+            dirty: true,
+        }
+    }
+}
+
 fn default_dirty() -> bool {
     true
 }
