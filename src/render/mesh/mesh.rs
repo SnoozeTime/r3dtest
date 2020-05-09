@@ -3,6 +3,7 @@ use crate::render::mesh::scene::Assets;
 use luminance_glfw::GlfwSurface;
 
 /// Nodes of a scene can have a mesh. A mesh is made of multiple primitives.
+#[derive(Default)]
 pub struct Mesh {
     pub primitives: Vec<Primitive>,
 }

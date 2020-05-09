@@ -17,7 +17,7 @@ use luminance_glfw::GlfwSurface;
 use std::collections::HashMap;
 
 pub type MeshId = String;
-pub type MaterialId = Option<usize>; // None is the default material.
+pub type MaterialId = Option<String>; // None is the default material.
 
 pub struct Scene {
     pub nodes: Vec<Node>,
@@ -142,7 +142,7 @@ impl Scene {
                         material.apply_uniforms(&iface);
 
                         rdr_gate.render(&RenderState::default(), |mut tess_gate| {
-                            tess_gate.render(&primitive.tess);
+                            tess_gate.render(&(*primitive.tess));
                         });
                     });
                 }

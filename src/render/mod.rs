@@ -27,6 +27,7 @@ use crate::render::assets::AssetManager;
 use crate::render::billboard::BillboardRenderer;
 use crate::render::debug::DebugRenderer;
 use crate::render::mesh::deferred::DeferredRenderer;
+use crate::render::mesh::PbrRenderer;
 use crate::render::particle::ParticleSystem;
 use crate::render::shaders::Shaders;
 use crate::render::skybox::SkyboxRenderer;
@@ -120,7 +121,8 @@ pub struct Renderer {
     debug_renderer: DebugRenderer,
     particle_renderer: ParticleSystem,
     _skybox_renderer: SkyboxRenderer,
-    deferred_pbr_renderer: DeferredRenderer,
+    //deferred_pbr_renderer: DeferredRenderer,
+    pbr_renderer: PbrRenderer,
     backbuffer: Framebuffer<Dim2, (), ()>,
     // offscreen_buffer: OffscreenBuffer,
     shaders: Shaders,
@@ -155,7 +157,8 @@ impl Renderer {
             .and_then(|f| Some((*f).clone()))
             .unwrap_or_default();
         let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(DEJA_VU).build();
-        let deferred_pbr_renderer = DeferredRenderer::new(surface);
+        //let deferred_pbr_renderer = DeferredRenderer::new(surface);
+        let pbr_renderer = PbrRenderer::new();
         let particle_renderer = ParticleSystem::new(surface);
         let sprite_renderer = SpriteRenderer::new(surface);
         let billboard_renderer = BillboardRenderer::new(surface);
@@ -188,7 +191,8 @@ impl Renderer {
             _billboard_renderer: billboard_renderer,
             text_renderer,
             debug_renderer,
-            deferred_pbr_renderer,
+            //deferred_pbr_renderer,
+            pbr_renderer,
             _skybox_renderer: skybox_renderer,
             backbuffer,
             shaders,
@@ -232,7 +236,7 @@ impl Renderer {
     }
 
     pub fn next_blending_mod_lighting(&mut self) {
-        self.deferred_pbr_renderer.next_blending_mode();
+        //  self.deferred_pbr_renderer.next_blending_mode();
     }
 
     pub fn check_updates(
@@ -259,8 +263,8 @@ impl Renderer {
 
         if let Some(editor) = editor {
             if let Some(to_load) = editor.gltf_to_load.take() {
-                self.deferred_pbr_renderer
-                    .load_gltf(surface, world, to_load);
+                //                self.deferred_pbr_renderer
+                //                    .load_gltf(surface, world, to_load);
             }
         }
     }
@@ -276,9 +280,8 @@ impl Renderer {
         resources: &Resources,
         editor: Option<(&imgui_luminance::Renderer, &DrawData)>,
     ) {
-        let assets = resources.fetch::<AssetManager>().unwrap();
         self.shaders.update();
-        self.deferred_pbr_renderer.check_updates();
+        // self.deferred_pbr_renderer.check_updates();
 
         let color = [0.8, 0.8, 0.8, 1.];
 
@@ -293,8 +296,9 @@ impl Renderer {
 
         // I - Render to screen !
         // =========================================================================================
+        let backbuffer = surface.back_buffer().unwrap();
         surface.pipeline_builder().pipeline(
-            &self.backbuffer,
+            &backbuffer,
             &PipelineState::default().set_clear_color(color),
             |pipeline, mut shd_gate| {
                 //                self.skybox_renderer.render(
@@ -303,12 +307,21 @@ impl Renderer {
                 //                    &self.offscreen_buffer,
                 //                    &self.shaders,
                 //                );
-                self.deferred_pbr_renderer.render(
+                //                self.deferred_pbr_renderer.render(
+                //                    &pipeline,
+                //                    &mut shd_gate,
+                //                    &self.projection,
+                //                    &self.view,
+                //                    world,
+                //                );
+
+                self.pbr_renderer.render(
                     &pipeline,
                     &mut shd_gate,
                     &self.projection,
                     &self.view,
                     world,
+                    resources,
                 );
 
                 if self.debug {
@@ -322,14 +335,6 @@ impl Renderer {
                 }
 
                 if should_render_player_ui {
-                    self.sprite_renderer.render(
-                        &pipeline,
-                        &mut shd_gate,
-                        world,
-                        &assets.sprites,
-                        &self.shaders,
-                    );
-
                     self.text_renderer
                         .render(&pipeline, &mut shd_gate, &self.shaders);
                 }

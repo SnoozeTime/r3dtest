@@ -1,13 +1,16 @@
 //! Individual UI editor for components
 //!
+use crate::assets::AssetManager;
 use crate::ecs::{Name, Transform};
 use crate::geom;
 use crate::physics::{RigidBody, Shape};
 use crate::render::lighting::{AmbientLight, DirectionalLight};
+use crate::render::mesh::mesh::Mesh;
 use crate::render::Render;
+use crate::resources::Resources;
 use crate::transform::LocalTransform;
 use glam::Quat;
-use imgui::{im_str, CollapsingHeader, ColorEdit, Ui};
+use imgui::{im_str, CollapsingHeader, ColorEdit, ComboBox, Ui};
 use nalgebra::UnitQuaternion;
 
 /// Edit the transform component of an entity
@@ -16,9 +19,9 @@ pub struct TransformEditor;
 
 impl TransformEditor {
     pub fn edit(&self, ui: &Ui, transform: &mut Transform) {
-        if CollapsingHeader::new(ui, im_str!("Transform"))
+        if CollapsingHeader::new(im_str!("Transform"))
             .default_open(true)
-            .build()
+            .build(ui)
         {
             let mut translation = transform.translation.into();
             if ui
@@ -52,9 +55,9 @@ pub struct LocalTransformEditor;
 
 impl LocalTransformEditor {
     pub fn edit(&self, ui: &Ui, transform: &mut LocalTransform) {
-        if CollapsingHeader::new(ui, im_str!("Local Transform"))
+        if CollapsingHeader::new(im_str!("Local Transform"))
             .default_open(true)
-            .build()
+            .build(ui)
         {
             let mut translation = transform.translation.into();
             if ui
@@ -91,9 +94,9 @@ pub struct NameEditor;
 
 impl NameEditor {
     pub fn edit(&self, ui: &Ui, name: &mut Name) {
-        if CollapsingHeader::new(ui, im_str!("Name"))
+        if CollapsingHeader::new(im_str!("Name"))
             .default_open(true)
-            .build()
+            .build(ui)
         {
             let mut imstring = imgui::ImString::from(name.0.clone());
             if ui.input_text(&im_str!("Name"), &mut imstring).build() {
@@ -110,9 +113,9 @@ pub struct RigidBodyEditor;
 impl RigidBodyEditor {
     pub fn edit(&self, ui: &Ui, rb: &mut RigidBody) -> bool {
         let mut edited = false;
-        if CollapsingHeader::new(ui, im_str!("Rigid Body"))
+        if CollapsingHeader::new(im_str!("Rigid Body"))
             .default_open(true)
-            .build()
+            .build(ui)
         {
             let Shape::AABB(bounds) = rb.shape;
             let mut bounds = bounds.into();
@@ -134,9 +137,9 @@ pub struct AmbientLightEditor;
 
 impl AmbientLightEditor {
     pub fn edit(&self, ui: &Ui, ambient: &mut AmbientLight) {
-        if CollapsingHeader::new(ui, im_str!("Ambient Light"))
+        if CollapsingHeader::new(im_str!("Ambient Light"))
             .default_open(true)
-            .build()
+            .build(ui)
         {
             let mut color = ambient.color.to_rgba_normalized();
             if ColorEdit::new(im_str!("Color"), &mut color).build(ui) {
@@ -154,9 +157,9 @@ pub struct DirectionalLightEditor;
 
 impl DirectionalLightEditor {
     pub fn edit(&self, ui: &Ui, light: &mut DirectionalLight) {
-        if CollapsingHeader::new(ui, im_str!("Directional Light"))
+        if CollapsingHeader::new(im_str!("Directional Light"))
             .default_open(true)
-            .build()
+            .build(ui)
         {
             let mut color = light.color.to_rgba_normalized();
             if ColorEdit::new(im_str!("Color"), &mut color).build(ui) {
@@ -179,16 +182,37 @@ impl DirectionalLightEditor {
 pub struct RenderEditor;
 
 impl RenderEditor {
-    pub fn edit(&self, ui: &Ui, render: &mut Render) {
-        if CollapsingHeader::new(ui, im_str!("Render"))
+    pub fn edit(&self, ui: &Ui, render: &mut Render, resources: &Resources) {
+        if CollapsingHeader::new(im_str!("Render"))
             .default_open(true)
-            .build()
+            .build(ui)
         {
             let mut imstring = imgui::ImString::from(render.mesh.clone());
+            let mut mesh_manager = resources.fetch_mut::<AssetManager<Mesh>>().unwrap();
 
-            if ui.input_text(im_str!("Mesh"), &mut imstring).build() {
-                render.mesh = imstring.to_string();
+            let mut items = Vec::new();
+            let mut selected = 0;
+            for (i, k) in mesh_manager.keys().enumerate() {
+                if render.mesh == k.0 {
+                    selected = i;
+                }
+
+                items.push(im_str!("{}", k.0));
             }
+
+            //let assets: Vec<String> = mesh_manager.keys().map(|k| im_str!("{}", k.0)).collect();
+
+            if ComboBox::new(im_str!("hi")).build_simple_string(
+                ui,
+                &mut selected,
+                &items.iter().collect::<Vec<_>>(),
+            ) {
+                render.mesh = items[selected].to_string();
+            }
+
+            //            if ui.input_text(im_str!("Mesh"), &mut imstring).build() {
+            //                render.mesh = imstring.to_string();
+            //            }
         }
     }
 }

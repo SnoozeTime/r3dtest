@@ -7,10 +7,11 @@ use crate::render::mesh::scene::{Assets, MaterialId};
 use crate::render::mesh::ImportData;
 use luminance::tess::{Mode, Tess, TessBuilder};
 use luminance_glfw::GlfwSurface;
+use std::rc::Rc;
 
 /// Smallest unit in gltf. Contains the vertices,
 pub struct Primitive {
-    pub tess: Tess,
+    pub tess: Rc<Tess>,
     pub material: MaterialId,
 }
 
@@ -80,15 +81,16 @@ impl Primitive {
             gltf::mesh::Mode::LineStrip => Mode::LineStrip,
         };
 
-        let material = primitive.material().index();
+        let material = primitive.material().name().map(|n| n.to_string());
         // Load material if not yet present.
         if !assets.materials.contains_key(&material) {
             let new_material =
                 Material::from_gltf(surface, &primitive.material(), import_data, assets);
 
-            assets
-                .materials
-                .insert(primitive.material().index(), new_material);
+            assets.materials.insert(
+                primitive.material().name().map(|n| n.to_string()),
+                new_material,
+            );
         }
 
         let mut tess_builder = TessBuilder::new(surface)
@@ -99,7 +101,7 @@ impl Primitive {
             tess_builder = tess_builder.set_indices(indices);
         }
 
-        let tess = tess_builder.build().unwrap();
+        let tess = Rc::new(tess_builder.build().unwrap());
 
         Self { tess, material }
     }

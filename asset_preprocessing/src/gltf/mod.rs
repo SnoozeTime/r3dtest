@@ -15,7 +15,10 @@ use std::path::{Path, PathBuf};
 use std::{fs, io};
 use thiserror::Error;
 
-use r3dtest::assets::mesh::{RawMesh, RawPrimitive, RawVertex};
+use r3dtest::assets::{
+    material::{Material, Sampler},
+    mesh::{RawMesh, RawPrimitive, RawVertex},
+};
 
 pub type MaterialId = Option<String>;
 
@@ -27,139 +30,106 @@ type ImportData = (
 
 type ImgWrapper = (String, DynamicImage);
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Sampler {
-    min_filter: Option<gltf::texture::MinFilter>,
-    mag_filter: Option<gltf::texture::MagFilter>,
-    wrap_s: gltf::texture::WrappingMode,
-    wrap_t: gltf::texture::WrappingMode,
-}
-
-impl Sampler {
-    pub fn from_gltf(sampler: gltf::texture::Sampler) -> Self {
-        Self {
-            min_filter: sampler.min_filter(),
-            mag_filter: sampler.mag_filter(),
-            wrap_t: sampler.wrap_t(),
-            wrap_s: sampler.wrap_s(),
-        }
+pub fn sampler_from_gltf(sampler: gltf::texture::Sampler) -> Sampler {
+    Sampler {
+        min_filter: sampler.min_filter().map(|f| f.as_gl_enum()),
+        mag_filter: sampler.mag_filter().map(|f| f.as_gl_enum()),
+        wrap_t: sampler.wrap_t().as_gl_enum(),
+        wrap_s: sampler.wrap_s().as_gl_enum(),
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct Material {
-    pub base_color: [f32; 4],
-    pub metallic_roughness_values: [f32; 2],
-    pub ao: f32,
-    pub alpha_cutoff: f32,
+#[throws(GltfError)]
+fn material_from_gltf(
+    g_material: &gltf::Material,
+    material_id: MaterialId,
+    import_data: &ImportData,
+) -> Material {
+    let pbr_stuff = g_material.pbr_metallic_roughness();
+    let base_color = pbr_stuff.base_color_factor();
+    let metallic = pbr_stuff.metallic_factor();
+    let roughness = pbr_stuff.roughness_factor();
 
-    // let's assume Opaque for now.
-    // pub alpha_mode: gltf::material::AlphaMode,
+    let color_texture_data = if let Some(color_texture) = pbr_stuff.base_color_texture() {
+        Some((
+            sampler_from_gltf(color_texture.texture().sampler()),
+            color_texture.tex_coord(),
+        ))
+    } else {
+        None
+    };
 
-    // if that is not None, the materials has a color texture.
-    // coord set.
-    pub color_texture_data: Option<(Sampler, u32)>,
+    let normal_texture_data = if let Some(normal_texture) = g_material.normal_texture() {
+        Some((
+            sampler_from_gltf(normal_texture.texture().sampler()),
+            normal_texture.tex_coord(),
+            normal_texture.scale(),
+        ))
+    } else {
+        None
+    };
 
-    // if that is not None, the materials has a normal texture.
-    // Coord set and normal scale.
-    pub normal_texture_data: Option<(Sampler, u32, f32)>,
-
-    // if that is not None, the materials has a roughness metallic texture.
-    // Coord set
-    pub roughness_metallic_texture_data: Option<(Sampler, u32)>,
-}
-
-impl Material {
-    #[throws(GltfError)]
-    fn from_gltf(
-        g_material: &gltf::Material,
-        material_id: MaterialId,
-        import_data: &ImportData,
-    ) -> Self {
-        let pbr_stuff = g_material.pbr_metallic_roughness();
-        let base_color = pbr_stuff.base_color_factor();
-        let metallic = pbr_stuff.metallic_factor();
-        let roughness = pbr_stuff.roughness_factor();
-
-        let color_texture_data = if let Some(color_texture) = pbr_stuff.base_color_texture() {
+    let roughness_metallic_texture_data =
+        if let Some(roughness_texture) = pbr_stuff.metallic_roughness_texture() {
             Some((
-                Sampler::from_gltf(color_texture.texture().sampler()),
-                color_texture.tex_coord(),
+                sampler_from_gltf(roughness_texture.texture().sampler()),
+                roughness_texture.tex_coord(),
             ))
         } else {
             None
         };
 
-        let normal_texture_data = if let Some(normal_texture) = g_material.normal_texture() {
-            Some((
-                Sampler::from_gltf(normal_texture.texture().sampler()),
-                normal_texture.tex_coord(),
-                normal_texture.scale(),
-            ))
-        } else {
-            None
-        };
+    let ao = if let Some(occ) = g_material.occlusion_texture() {
+        occ.strength()
+    } else {
+        0.0
+    };
 
-        let roughness_metallic_texture_data =
-            if let Some(roughness_texture) = pbr_stuff.metallic_roughness_texture() {
-                Some((
-                    Sampler::from_gltf(roughness_texture.texture().sampler()),
-                    roughness_texture.tex_coord(),
-                ))
-            } else {
-                None
-            };
-
-        let ao = if let Some(occ) = g_material.occlusion_texture() {
-            occ.strength()
-        } else {
-            0.0
-        };
-
-        Self {
-            base_color,
-            metallic_roughness_values: [metallic, roughness],
-            color_texture_data,
-            normal_texture_data,
-            roughness_metallic_texture_data,
-            ao,
-            alpha_cutoff: g_material.alpha_cutoff(),
-        }
+    Material {
+        base_color,
+        metallic_roughness_values: [metallic, roughness],
+        color_texture_data,
+        normal_texture_data,
+        roughness_metallic_texture_data,
+        ao,
+        emissive_factor: g_material.emissive_factor(),
+        alpha_cutoff: g_material.alpha_cutoff(),
+        ..Material::default()
     }
+}
 
-    #[throws(GltfError)]
-    fn extract_textures(
-        g_material: gltf::Material,
-        material_id: MaterialId,
-        import_data: &ImportData,
-    ) -> Vec<ImgWrapper> {
-        let mut images = vec![];
-        let pbr_stuff = g_material.pbr_metallic_roughness();
+#[throws(GltfError)]
+fn extract_textures(
+    g_material: gltf::Material,
+    material_id: MaterialId,
+    import_data: &ImportData,
+) -> Vec<ImgWrapper> {
+    let mut images = vec![];
+    let pbr_stuff = g_material.pbr_metallic_roughness();
 
-        let image_pref = material_id.clone().unwrap_or("default".to_owned());
-        if let Some(color_texture) = pbr_stuff.base_color_texture() {
-            let texture = color_texture.texture();
-            images.push((
-                format!("{}_color.png", image_pref),
-                load_texture(texture, import_data)?,
-            ));
-        }
-        if let Some(normal_texture) = g_material.normal_texture() {
-            let texture = normal_texture.texture();
-            images.push((
-                format!("{}_normal.png", image_pref),
-                load_texture(texture, import_data)?,
-            ));
-        }
-        if let Some(rm_texture) = pbr_stuff.metallic_roughness_texture() {
-            let texture = rm_texture.texture();
-            images.push((
-                format!("{}_roughness_metallic.png", image_pref),
-                load_texture(texture, import_data)?,
-            ));
-        }
-        images
+    let image_pref = material_id.clone().unwrap_or("default".to_owned());
+    if let Some(color_texture) = pbr_stuff.base_color_texture() {
+        let texture = color_texture.texture();
+        images.push((
+            format!("{}_color.png", image_pref),
+            load_texture(texture, import_data)?,
+        ));
     }
+    if let Some(normal_texture) = g_material.normal_texture() {
+        let texture = normal_texture.texture();
+        images.push((
+            format!("{}_normal.png", image_pref),
+            load_texture(texture, import_data)?,
+        ));
+    }
+    if let Some(rm_texture) = pbr_stuff.metallic_roughness_texture() {
+        let texture = rm_texture.texture();
+        images.push((
+            format!("{}_roughness_metallic.png", image_pref),
+            load_texture(texture, import_data)?,
+        ));
+    }
+    images
 }
 
 #[throws(GltfError)]
@@ -349,10 +319,9 @@ fn primitive_from_gltf(
     if !materials.contains_key(&material_id) {
         info!("Will extract material {:?}", material_id);
 
-        let material =
-            Material::from_gltf(&primitive.material(), material_id.clone(), import_data)?;
+        let material = material_from_gltf(&primitive.material(), material_id.clone(), import_data)?;
         materials.insert(material_id.clone(), material);
-        images.append(&mut Material::extract_textures(
+        images.append(&mut extract_textures(
             primitive.material(),
             material_id.clone(),
             import_data,

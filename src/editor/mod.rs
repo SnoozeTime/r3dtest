@@ -1,16 +1,23 @@
 use crate::ecs::{Name, Transform};
-use imgui::{im_str, ImString, MenuItem, Selectable, StyleVar, TreeNode};
+use imgui::*;
 
 mod components;
+mod material_editor;
+pub mod mesh_editor;
+// mod tab;
 use crate::editor::components::{
     AmbientLightEditor, DirectionalLightEditor, LocalTransformEditor, NameEditor, RenderEditor,
     RigidBodyEditor, TransformEditor,
 };
+use crate::editor::material_editor::MaterialEditor;
+use crate::editor::mesh_editor::MeshEditor;
+use crate::event::GameEvent;
 use crate::physics::{BodyToEntity, PhysicWorld, RigidBody};
 use crate::render::lighting::{AmbientLight, DirectionalLight};
 use crate::render::Render;
 use crate::resources::Resources;
 use crate::transform::{HasChildren, HasParent, LocalTransform};
+use shrev::EventChannel;
 
 /// Keep the state of the game editor.
 pub struct Editor {
@@ -28,6 +35,12 @@ pub struct Editor {
     // Loading GLTF
     current_gltf_to_load: ImString,
     pub gltf_to_load: Option<String>,
+
+    // Mesh editor (to change material...)
+    mesh_editor: MeshEditor,
+
+    // material editor.
+    material_editor: MaterialEditor,
 }
 
 impl Editor {
@@ -41,6 +54,8 @@ impl Editor {
             rigidbody_editor: RigidBodyEditor::default(),
             current_gltf_to_load: ImString::with_capacity(128),
             gltf_to_load: None,
+            mesh_editor: MeshEditor::default(),
+            material_editor: MaterialEditor::default(),
         }
     }
 
@@ -62,13 +77,13 @@ impl Editor {
             .map(|current| current == parent)
             .unwrap_or(false);
 
-        TreeNode::new(ui, &entity_name)
+        TreeNode::new(&entity_name)
             .leaf(children.is_empty())
             .selected(selected)
             .opened(true, imgui::Condition::FirstUseEver)
             .open_on_double_click(true)
             .open_on_arrow(true)
-            .build(|| {
+            .build(ui, || {
                 if ui.is_item_clicked(imgui::MouseButton::Left) {
                     self.selected_entity = Some(parent);
                 }
@@ -88,7 +103,6 @@ impl Editor {
         &mut self,
         ui: &imgui::Ui,
         world: &hecs::World,
-        physics: &mut PhysicWorld,
         resources: &mut Resources,
     ) {
         imgui::Window::new(im_str!("Entities"))
@@ -123,57 +137,62 @@ impl Editor {
                 }
             });
 
-        if let Some(entity) = self.selected_entity {
-            imgui::Window::new(im_str!("Components"))
-                .opened(&mut true)
-                .position(
-                    [self.w as f32 - 300.0, 10.0],
-                    imgui::Condition::FirstUseEver,
-                )
-                .size([250.0, 400.0], imgui::Condition::FirstUseEver)
-                .build(ui, || {
-                    ui.text(im_str!("Selected entity is {:?}", entity));
+        imgui::Window::new(im_str!("Components"))
+            .opened(&mut true)
+            .position(
+                [self.w as f32 - 300.0, 10.0],
+                imgui::Condition::FirstUseEver,
+            )
+            .size([250.0, 400.0], imgui::Condition::FirstUseEver)
+            .build(ui, || {
+                TabBar::new(im_str!("Editors")).build(ui, || {
+                    TabItem::new(im_str!("components")).build(ui, || {
+                        if let Some(entity) = self.selected_entity {
+                            if let Ok(mut t) = world.get_mut::<Transform>(entity) {
+                                self.transform_editor.edit(ui, &mut t);
+                            }
 
-                    if let Ok(mut t) = world.get_mut::<Transform>(entity) {
-                        self.transform_editor.edit(ui, &mut t);
-                    }
+                            if let Ok(mut t) = world.get_mut::<LocalTransform>(entity) {
+                                LocalTransformEditor::default().edit(ui, &mut t);
+                            }
 
-                    if let Ok(mut t) = world.get_mut::<LocalTransform>(entity) {
-                        LocalTransformEditor::default().edit(ui, &mut t);
-                    }
+                            if let Ok(mut n) = world.get_mut::<Name>(entity) {
+                                self.name_editor.edit(ui, &mut n);
+                            }
 
-                    if let Ok(mut n) = world.get_mut::<Name>(entity) {
-                        self.name_editor.edit(ui, &mut n);
-                    }
-
-                    if let Ok(mut rb) = world.get_mut::<RigidBody>(entity) {
-                        if let Ok(t) = world.get::<Transform>(entity) {
-                            if self.rigidbody_editor.edit(ui, &mut rb) {
-                                // edited.
-                                let mut body_to_entity =
-                                    resources.fetch_mut::<BodyToEntity>().unwrap();
-
-                                if let Some(h) = rb.handle {
-                                    body_to_entity.remove(&h);
+                            if let Ok(mut rb) = world.get_mut::<RigidBody>(entity) {
+                                if let Ok(t) = world.get::<Transform>(entity) {
+                                    if self.rigidbody_editor.edit(ui, &mut rb) {
+                                        // edited.
+                                        let mut chan = resources
+                                            .fetch_mut::<EventChannel<GameEvent>>()
+                                            .unwrap();
+                                        chan.single_write(GameEvent::RbUpdate(entity));
+                                    }
                                 }
-                                physics.update_rigidbody_component(&t, &mut rb);
+                            }
+
+                            if let Ok(mut ambient) = world.get_mut::<AmbientLight>(entity) {
+                                AmbientLightEditor::default().edit(ui, &mut ambient);
+                            }
+
+                            if let Ok(mut light) = world.get_mut::<DirectionalLight>(entity) {
+                                DirectionalLightEditor::default().edit(ui, &mut light);
+                            }
+
+                            if let Ok(mut render) = world.get_mut::<Render>(entity) {
+                                RenderEditor::default().edit(ui, &mut render, resources);
                             }
                         }
-                    }
-
-                    if let Ok(mut ambient) = world.get_mut::<AmbientLight>(entity) {
-                        AmbientLightEditor::default().edit(ui, &mut ambient);
-                    }
-
-                    if let Ok(mut light) = world.get_mut::<DirectionalLight>(entity) {
-                        DirectionalLightEditor::default().edit(ui, &mut light);
-                    }
-
-                    if let Ok(mut render) = world.get_mut::<Render>(entity) {
-                        RenderEditor::default().edit(ui, &mut render);
-                    }
-                })
-        }
+                    });
+                    TabItem::new(im_str!("meshes")).build(ui, || {
+                        self.mesh_editor.run_ui(ui, resources);
+                    });
+                    TabItem::new(im_str!("materials")).build(ui, || {
+                        self.material_editor.run_ui(ui, resources);
+                    });
+                });
+            })
     }
 
     fn show_load_gltf_popup(&mut self, ui: &imgui::Ui) {

@@ -53,8 +53,8 @@ rand = "0.7.3"
 bitflags = "1.2.1"
 
 # imgui renderer for luminance
-imgui_luminance = { git = "https://github.com/SnoozeTime/imgui_luminance" }
-imgui = "0.3.0"
+imgui = { path = "../imgui-rs" }
+imgui_luminance = { path = "../imgui_luminance" }
 
 [dependencies.gltf]
 version = "0.15"

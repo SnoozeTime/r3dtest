@@ -692,9 +692,7 @@ dependencies = [
 
 [[package]]
 name = "imgui"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a2d28cee2982d4dab4dd954c23be339ab1f98be4ff5a13ecd8fbfb47cdfa23a"
+version = "0.4.0-pre"
 dependencies = [
  "bitflags",
  "imgui-sys",
@@ -704,9 +702,7 @@ dependencies = [
 
 [[package]]
 name = "imgui-sys"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21a8693e0f66ecd2ec10e2f0ed4dc4519071495f350e6d8ddaf3e70351229257"
+version = "0.4.0-pre"
 dependencies = [
  "cc",
 ]
@@ -714,7 +710,6 @@ dependencies = [
 [[package]]
 name = "imgui_luminance"
 version = "0.1.0"
-source = "git+https://github.com/SnoozeTime/imgui_luminance#b9aff22d589a38659787e4fe4bb306076ba5bffd"
 dependencies = [
  "imgui",
  "luminance",

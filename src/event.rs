@@ -50,4 +50,6 @@ pub enum GameEvent {
         entity: Entity,
         health: i32,
     },
+
+    RbUpdate(Entity),
 }

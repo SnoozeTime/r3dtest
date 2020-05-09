@@ -8,6 +8,8 @@ use self::na::Unit;
 use crate::ecs::Transform;
 use nalgebra::{Isometry3, UnitQuaternion};
 
+use crate::event::GameEvent;
+use crate::resources::Resources;
 use na::Point3;
 use na::Vector3;
 use ncollide3d::pipeline::CollisionGroups;
@@ -21,6 +23,7 @@ use nphysics3d::object::{
     DefaultColliderHandle, DefaultColliderSet, RigidBodyDesc,
 };
 use nphysics3d::world::{DefaultGeometricalWorld, DefaultMechanicalWorld};
+use shrev::{EventChannel, ReaderId};
 use std::fs;
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone)]
@@ -100,15 +103,14 @@ pub struct PhysicWorld {
 
     //force_generators: DefaultForceGeneratorSet<f32, DefaultBodySet<f32>>,
     //ground_handle: BodyIndex,
+    rdr_id: ReaderId<GameEvent>,
 }
 
-impl Default for PhysicWorld {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 impl PhysicWorld {
-    pub fn new() -> Self {
+    pub fn new(resources: &mut Resources) -> Self {
+        let mut chan = resources.fetch_mut::<EventChannel<GameEvent>>().unwrap();
+        let rdr_id = chan.register_reader();
+
         let conf_str =
             fs::read_to_string(std::env::var("CONFIG_PATH").unwrap() + "physic.ron").unwrap();
         let conf: PhysicConfig = ron::de::from_str(&conf_str).unwrap();
@@ -126,8 +128,30 @@ impl PhysicWorld {
             geometrical_world,
             bodies,
             colliders,
+            rdr_id,
             //joint_constraints,
             //force_generators,
+        }
+    }
+
+    /// Whenever a body need to be changed from outside the physic system (example, editor change
+    /// the properties), an event will be emitted and will need to be processed here. This is to
+    /// decouple the physics system with the rest of the systems.
+    pub fn process_events(&mut self, world: &mut hecs::World, resources: &Resources) {
+        let chan = resources.fetch::<EventChannel<GameEvent>>().unwrap();
+        for ev in chan.read(&mut self.rdr_id) {
+            if let GameEvent::RbUpdate(e) = ev {
+                if let (Ok(t), Ok(mut rb)) =
+                    (world.get::<Transform>(*e), world.get_mut::<RigidBody>(*e))
+                {
+                    let mut body_to_entity = resources.fetch_mut::<BodyToEntity>().unwrap();
+
+                    if let Some(h) = rb.handle {
+                        body_to_entity.remove(&h);
+                    }
+                    self.update_rigidbody_component(&t, &mut rb);
+                }
+            }
         }
     }
 

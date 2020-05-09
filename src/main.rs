@@ -101,7 +101,9 @@ enum ControllerMode {
 }
 
 fn main_loop(mut surface: GlfwSurface, map_name: String) {
-    let mut physics = PhysicWorld::default();
+    let mut resources = setup_resources();
+
+    let mut physics = PhysicWorld::new(&mut resources);
 
     // SETUP WORLD.
     let (mut loader, mut world) = WorldLoader::new(format!(
@@ -118,7 +120,6 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         body_to_entity.insert(id, e);
     }
 
-    let mut resources = setup_resources();
     resources.insert(body_to_entity);
     let asset_manager = AssetManager::new(&mut surface);
     resources.insert(asset_manager);
@@ -293,7 +294,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
 
         // render the editor.
         let ui = imgui.frame();
-        editor.show_components(&ui, &world, &mut physics, &mut resources);
+        editor.show_components(&ui, &world, &mut resources);
         //ui.show_demo_window(&mut true);
         let draw_data = ui.render();
         imgui_renderer.prepare(&mut surface, draw_data);
@@ -315,7 +316,7 @@ fn main_loop(mut surface: GlfwSurface, map_name: String) {
         garbage_collector.collect(&mut world, &mut physics, &resources);
 
         renderer.check_updates(&mut surface, &mut world, &resources, Some(&mut editor));
-
+        physics.process_events(&mut world, &resources);
         // FIXME
         surface.swap_buffers();
         let now = Instant::now();

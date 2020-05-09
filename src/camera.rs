@@ -12,6 +12,18 @@ pub fn get_view(world: &hecs::World) -> Option<glam::Mat4> {
     None
 }
 
+/// Get the camera currently active. This is used for the view matrix and the light
+/// calculation.
+pub fn find_main_camera(world: &hecs::World) -> Option<hecs::Entity> {
+    for (e, cam) in world.query::<&Camera>().iter() {
+        if cam.active {
+            return Some(e);
+        }
+    }
+
+    None
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Camera {
     pub active: bool,
